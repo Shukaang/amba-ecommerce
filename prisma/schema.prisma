@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User model - stores customer and admin profiles
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String
+  password  String     // hashed password for custom auth
+  phone     String?
+  address   String?
+  role      UserRole   @default(CUSTOMER)
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  orders     Order[]
+  ratings    Rating[]
+  cartItems  CartItem[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+// Product model - product catalog
+model Product {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  price         Float
+  images        String[] // array of image URLs
+  averageRating Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orderItems OrderItem[]
+  ratings    Rating[]
+  cartItems  CartItem[]
+
+  @@map("products")
+}
+
+// Order model - customer orders
+model Order {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        OrderItem[]
+  totalPrice   Float
+  shippingInfo String
+  status       OrderStatus   @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  READY
+  COMPLETED
+  CANCELED
+  FAILED
+}
+
+// OrderItem model - individual items in an order
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  price     Float   // price at time of order
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// Rating model - product reviews
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating    Int      @db.SmallInt // 1-5 stars
+  review    String?  // optional review text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId]) // one rating per user per product
+  @@index([productId])
+  @@map("ratings")
+}
+
+// CartItem model - shopping cart items
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId]) // one cart entry per user per product
+  @@index([userId])
+  @@map("cart_items")
+}
