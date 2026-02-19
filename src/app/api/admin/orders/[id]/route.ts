@@ -3,12 +3,12 @@ import { createAdminClient } from '@/lib/supabase/supabaseServer'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get the id from params
+    // Await the params promise to get the actual id
     const { id } = await params
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Order ID is required' },
@@ -26,19 +26,19 @@ export async function PUT(
         { status: 400 }
       )
     }
-    
+
     const { status } = body
 
     // Validate status
     const validStatuses = ['PENDING', 'CONFIRMED', 'READY', 'SHIPPED', 'COMPLETED', 'CANCELED', 'FAILED']
-    
+
     if (!status) {
       return NextResponse.json(
         { error: 'Status is required' },
         { status: 400 }
       )
     }
-    
+
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` },
@@ -99,12 +99,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get the id from params
+    // Await the params promise to get the actual id
     const { id } = await params
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Order ID is required' },

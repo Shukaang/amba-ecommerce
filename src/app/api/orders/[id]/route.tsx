@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/supabaseServer";
 
-// api/orders/[id]/route.ts
-
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const supabase = await createAdminClient();
 
     const { data: order, error } = await supabase
@@ -23,7 +22,7 @@ export async function GET(
         )
       `,
       )
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -39,9 +38,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
 
     if (!body.status) {
@@ -69,11 +69,10 @@ export async function PUT(
 
     const supabase = await createAdminClient();
 
-    // Get current order to check if status is changing to CONFIRMED
     const { data: currentOrder } = await supabase
       .from("orders")
       .select("status, order_number")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     const updateData: any = {
@@ -81,16 +80,10 @@ export async function PUT(
       updated_at: new Date().toISOString(),
     };
 
-    // If changing from PENDING to CONFIRMED, trigger order number generation
-    if (currentOrder?.status === "PENDING" && body.status === "CONFIRMED") {
-      // The trigger will handle order number generation
-      // We just need to update the status
-    }
-
     const { data: order, error } = await supabase
       .from("orders")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("id", id)
       .select(
         `
         *,
@@ -106,10 +99,7 @@ export async function PUT(
       message = "Order confirmed! Order number has been generated.";
     }
 
-    return NextResponse.json({
-      order,
-      message,
-    });
+    return NextResponse.json({ order, message });
   } catch (error: any) {
     console.error("Update order error:", error);
     return NextResponse.json(
@@ -121,27 +111,23 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const supabase = await createAdminClient();
 
-    // Check if order exists
     const { data: existingOrder } = await supabase
       .from("orders")
       .select("id, order_number")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!existingOrder) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Delete order (this will cascade to order_items due to foreign key constraints)
-    const { error } = await supabase
-      .from("orders")
-      .delete()
-      .eq("id", params.id);
+    const { error } = await supabase.from("orders").delete().eq("id", id);
 
     if (error) throw error;
 

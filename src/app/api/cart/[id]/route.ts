@@ -4,7 +4,7 @@ import { verifyAuth } from '@/lib/auth/middleware'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await verifyAuth(request)
@@ -12,7 +12,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { quantity } = body
 
@@ -73,7 +73,7 @@ export async function PUT(
       productId: updatedItem.product_id,
       variantId: updatedItem.variant_id,
       quantity: updatedItem.quantity,
-      price: updatedItem.price, // use stored price
+      price: updatedItem.price,
       product: {
         title: updatedItem.products.title,
         images: updatedItem.products.images,
@@ -100,7 +100,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await verifyAuth(request)
@@ -108,7 +108,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const supabase = await createAdminClient()
 
     const { data: cartItem, error: fetchError } = await supabase

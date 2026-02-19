@@ -1,13 +1,12 @@
-// app/api/users/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const supabase = await createAdminClient()
 
     const { data: user, error } = await supabase
@@ -39,22 +38,22 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
-    
+
     // Only allow updating specific fields
     const { status, role } = body
-    
+
     if (status && !['ACTIVE', 'INACTIVE', 'BANNED'].includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status value' },
         { status: 400 }
       )
     }
-    
+
     if (role && !['SUPERADMIN', 'ADMIN', 'CUSTOMER'].includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role value' },
@@ -68,7 +67,7 @@ export async function PUT(
     const updateData: any = {}
     if (status) updateData.status = status
     if (role) updateData.role = role
-    
+
     // Always update timestamp
     updateData.updated_at = new Date().toISOString()
 
@@ -89,9 +88,9 @@ export async function PUT(
       throw error
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'User updated successfully',
-      user: updatedUser 
+      user: updatedUser
     })
 
   } catch (error: any) {
@@ -105,10 +104,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const supabase = await createAdminClient()
 
     // Check if user exists first
@@ -147,8 +146,8 @@ export async function DELETE(
 
     if (error) throw error
 
-    return NextResponse.json({ 
-      message: `User ${existingUser.email} deleted successfully` 
+    return NextResponse.json({
+      message: `User ${existingUser.email} deleted successfully`
     })
 
   } catch (error: any) {

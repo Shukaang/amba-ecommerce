@@ -3,15 +3,16 @@ import { createAdminClient } from '@/lib/supabase/supabaseServer'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createAdminClient()
 
     const { data: category, error } = await supabase
       .from('categories')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -31,9 +32,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     if (!body.title) {
@@ -54,7 +56,7 @@ export async function PUT(
         image: body.image || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -78,16 +80,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createAdminClient()
 
     // Check if category has products
     const { data: products } = await supabase
       .from('products')
       .select('id')
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .limit(1)
 
     if (products && products.length > 0) {
@@ -95,14 +98,14 @@ export async function DELETE(
       await supabase
         .from('products')
         .update({ category_id: null })
-        .eq('category_id', params.id)
+        .eq('category_id', id)
     }
 
     // Delete category
     const { error } = await supabase
       .from('categories')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       throw error
