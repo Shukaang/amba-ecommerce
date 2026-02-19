@@ -2,19 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 import { verifyAuth } from '@/lib/auth/middleware'
 
-// PUT update cart item quantity
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const user = await verifyAuth(request)
-    
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = params
@@ -38,13 +33,9 @@ export async function PUT(
       .single()
 
     if (fetchError || !cartItem) {
-      return NextResponse.json(
-        { error: 'Cart item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Cart item not found' }, { status: 404 })
     }
 
-    // MANUAL OWNERSHIP CHECK - very important!
     if (cartItem.user_id !== user.id) {
       return NextResponse.json(
         { error: 'You do not have permission to update this item.' },
@@ -53,19 +44,14 @@ export async function PUT(
     }
 
     if (quantity === 0) {
-      // Delete if quantity is 0
-      await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', id)
-
-      return NextResponse.json({ 
+      await supabase.from('cart_items').delete().eq('id', id)
+      return NextResponse.json({
         success: true,
         message: 'Item removed from cart'
       })
     }
 
-    // Update quantity
+    // Update quantity only – price remains unchanged
     const { data: updatedItem, error: updateError } = await supabase
       .from('cart_items')
       .update({
@@ -75,7 +61,7 @@ export async function PUT(
       .eq('id', id)
       .select(`
         *,
-        products!inner(title, images, price),
+        products!inner(title, images),
         product_variants!left(color, size, unit)
       `)
       .single()
@@ -87,7 +73,7 @@ export async function PUT(
       productId: updatedItem.product_id,
       variantId: updatedItem.variant_id,
       quantity: updatedItem.quantity,
-      price: updatedItem.products.price,
+      price: updatedItem.price, // use stored price
       product: {
         title: updatedItem.products.title,
         images: updatedItem.products.images,
@@ -103,7 +89,6 @@ export async function PUT(
       item: formattedItem,
       message: 'Cart updated successfully'
     })
-
   } catch (error: any) {
     console.error('Update cart error:', error)
     return NextResponse.json(
@@ -113,25 +98,19 @@ export async function PUT(
   }
 }
 
-// DELETE remove item from cart
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const user = await verifyAuth(request)
-    
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = params
     const supabase = await createAdminClient()
 
-    // Get cart item and verify ownership
     const { data: cartItem, error: fetchError } = await supabase
       .from('cart_items')
       .select('*')
@@ -139,13 +118,9 @@ export async function DELETE(
       .single()
 
     if (fetchError || !cartItem) {
-      return NextResponse.json(
-        { error: 'Cart item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Cart item not found' }, { status: 404 })
     }
 
-    // MANUAL OWNERSHIP CHECK
     if (cartItem.user_id !== user.id) {
       return NextResponse.json(
         { error: 'You do not have permission to remove this item.' },
@@ -153,16 +128,12 @@ export async function DELETE(
       )
     }
 
-    await supabase
-      .from('cart_items')
-      .delete()
-      .eq('id', id)
+    await supabase.from('cart_items').delete().eq('id', id)
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: 'Item removed from cart'
     })
-
   } catch (error: any) {
     console.error('Delete cart item error:', error)
     return NextResponse.json(

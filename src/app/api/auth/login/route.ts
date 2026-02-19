@@ -56,24 +56,24 @@ export async function POST(request: NextRequest) {
     })
 
     // Set HTTP-only cookie
-    const response = NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    })
+   const response = NextResponse.json({
+  user: {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  },
+})
 
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    })
+response.cookies.set('auth-token', token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax', // Changed from 'strict' to 'lax'
+  maxAge: 60 * 60 * 24 * 7, // 7 days
+  path: '/',
+})
 
-    return response
+return response
 
   } catch (error: any) {
     console.error('Login error:', error)

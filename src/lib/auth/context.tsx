@@ -1,9 +1,9 @@
+// lib/auth/context.ts
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Timestamp } from "next/dist/server/lib/cache-handlers/types";
 
 interface User {
   id: string;
@@ -76,7 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string,
+    redirectTo?: string,
+  ) => {
     try {
       console.log("Attempting login for:", email);
       const res = await fetch("/api/auth/login", {
@@ -98,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await userRes.json();
         console.log("Complete user data after login:", userData.user);
 
-        // Set user with all fields
         setUser({
           id: userData.user.id,
           email: userData.user.email,
@@ -119,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           phone: "",
           address: "",
           role: data.user.role,
-          status: "ACTIVE", // Default
+          status: "ACTIVE",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -127,11 +130,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       toast.success("Login successful!");
 
-      // Redirect based on role
-      if (data.user.role === "CUSTOMER") {
-        router.push("/");
+      // Redirect based on priority:
+      if (redirectTo) {
+        router.push(redirectTo);
       } else {
-        router.push("/admin");
+        // Default role-based redirect
+        if (data.user.role === "CUSTOMER") {
+          router.push("/");
+        } else {
+          router.push("/admin");
+        }
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -195,6 +203,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+
+      // Clear tracking session for logged-in user
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("visitor_session_id");
+      }
+
       setUser(null);
       toast.success("Logged out successfully");
       router.push("/");

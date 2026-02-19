@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -40,7 +41,6 @@ export default function ProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // In the handleSubmit function, update the updateUser call:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -74,21 +74,13 @@ export default function ProfilePage() {
     }
   };
 
-  // And update the useEffect to properly handle phone and address:
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        address: user.address || "",
-      });
-    }
-  }, [user]);
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#f73a00] mx-auto mb-4" />
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -105,26 +97,35 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Info Card */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 bg-white border-gray-200">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your personal details</CardDescription>
+              <CardTitle className="text-gray-900">
+                Personal Information
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Update your personal details
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name" className="text-gray-700">
+                      Full Name
+                    </Label>
                     <Input
                       id="name"
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
                       required
+                      className="bg-white border-gray-300 focus:ring-[#f73a00] focus:border-[#f73a00] text-gray-700"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email" className="text-gray-700">
+                      Email Address
+                    </Label>
                     <Input
                       id="email"
                       name="email"
@@ -133,6 +134,7 @@ export default function ProfilePage() {
                       onChange={handleChange}
                       required
                       disabled
+                      className="bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-500">
                       Email cannot be changed
@@ -140,27 +142,38 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone" className="text-gray-700">
+                    Phone Number
+                  </Label>
                   <Input
                     id="phone"
                     name="phone"
                     type="tel"
+                    placeholder="+251 912 345 678"
                     value={formData.phone}
                     onChange={handleChange}
+                    className="bg-white border-gray-300 focus:ring-[#f73a00] focus:border-[#f73a00] text-gray-700"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Shipping Address</Label>
+                  <Label htmlFor="address" className="text-gray-700">
+                    Shipping Address
+                  </Label>
                   <Input
                     id="address"
                     name="address"
-                    placeholder="123 Main St, City, State 12345"
+                    placeholder="Addis Ababa, Ethiopia"
                     value={formData.address}
                     onChange={handleChange}
+                    className="bg-white border-gray-300 focus:ring-[#f73a00] focus:border-[#f73a00] text-gray-700"
                   />
                 </div>
                 <div className="pt-4">
-                  <Button type="submit" disabled={loading}>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+                  >
                     {loading ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
@@ -169,15 +182,19 @@ export default function ProfilePage() {
           </Card>
 
           {/* Account Info Card */}
-          <Card>
+          <Card className="bg-white border-gray-200">
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>Your account details</CardDescription>
+              <CardTitle className="text-gray-900">
+                Account Information
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Your account details
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-500">
-                  Account Role
+                  Account
                 </Label>
                 <div className="mt-1">
                   <span
@@ -244,7 +261,11 @@ export default function ProfilePage() {
                 </p>
               </div>
               <div className="pt-4">
-                <Button variant="outline" className="w-full" asChild>
+                <Button
+                  variant="outline"
+                  className="w-full border-gray-300 hover:bg-gray-50 text-gray-700"
+                  asChild
+                >
                   <a href="/change-password">Change Password</a>
                 </Button>
               </div>

@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 import { verifyAuth } from '@/lib/auth/middleware'
 
-// GET cart - returns user's cart items
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyAuth(request)
-    
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized. Please login.' },
@@ -14,32 +12,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Use admin client to bypass RLS for reading
     const supabase = await createAdminClient()
 
-    // Fetch cart items for this user
     const { data: cartItems, error } = await supabase
       .from('cart_items')
       .select(`
         *,
-        products!inner(title, images, price),
+        products!inner(title, images),
         product_variants!left(color, size, unit)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching cart:', error)
-      throw error
-    }
+    if (error) throw error
 
-    // Format the response
     const formattedItems = (cartItems || []).map(item => ({
       id: item.id,
       productId: item.product_id,
       variantId: item.variant_id,
       quantity: item.quantity,
-      price: item.products.price,
+      price: item.price, // use stored price
       product: {
         title: item.products.title,
         images: item.products.images,
@@ -52,7 +44,7 @@ export async function GET(request: NextRequest) {
     }))
 
     const total = formattedItems.reduce(
-      (sum: number, item: any) => sum + item.price * item.quantity,
+      (sum, item) => sum + item.price * item.quantity,
       0
     )
 
@@ -61,7 +53,6 @@ export async function GET(request: NextRequest) {
       total,
       itemCount: formattedItems.reduce((sum, item) => sum + item.quantity, 0),
     })
-
   } catch (error: any) {
     console.error('Cart fetch error:', error)
     return NextResponse.json(
@@ -71,11 +62,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST add to cart - adds item to user's cart
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyAuth(request)
-    
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized. Please login to add items to cart.' },
@@ -86,7 +75,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { productId, variantId, quantity = 1 } = body
 
-    // Validate input
     if (!productId || quantity < 1) {
       return NextResponse.json(
         { error: 'Invalid request. Product ID and quantity (minimum 1) are required.' },
@@ -96,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    // First, verify the user exists in database (important for RLS)
+    // Verify user exists
     const { data: dbUser, error: userError } = await supabase
       .from('users')
       .select('id, status')
@@ -117,7 +105,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if product exists
+    // Get product base price
     const { data: product, error: productError } = await supabase
       .from('products')
       .select('id, price')
@@ -131,7 +119,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if variant exists (if provided)
+    // Determine correct price (variant price if variant exists)
+    let itemPrice = product.price
     if (variantId) {
       const { data: variant, error: variantError } = await supabase
         .from('product_variants')
@@ -145,6 +134,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      itemPrice = variant.price
     }
 
     // Check if item already in cart
@@ -154,12 +144,12 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('product_id', productId)
       .eq('variant_id', variantId)
-      .single()
+      .maybeSingle()
 
     let cartItem
 
     if (existingItem) {
-      // Update quantity if item exists
+      // Update quantity (price remains as originally stored)
       const { data: updatedItem, error: updateError } = await supabase
         .from('cart_items')
         .update({
@@ -169,18 +159,15 @@ export async function POST(request: NextRequest) {
         .eq('id', existingItem.id)
         .select(`
           *,
-          products!inner(title, images, price),
+          products!inner(title, images),
           product_variants!left(color, size, unit)
         `)
         .single()
 
-      if (updateError) {
-        console.error('Update cart error:', updateError)
-        throw updateError
-      }
+      if (updateError) throw updateError
       cartItem = updatedItem
     } else {
-      // Create new cart item
+      // Create new cart item with the determined price
       const { data: newItem, error: insertError } = await supabase
         .from('cart_items')
         .insert({
@@ -188,38 +175,25 @@ export async function POST(request: NextRequest) {
           product_id: productId,
           variant_id: variantId,
           quantity,
+          price: itemPrice, // store correct price
         })
         .select(`
           *,
-          products!inner(title, images, price),
+          products!inner(title, images),
           product_variants!left(color, size, unit)
         `)
         .single()
 
-      if (insertError) {
-        console.error('Insert cart error:', insertError)
-        // Check for RLS violation
-        if (insertError.message.includes('row-level security')) {
-          return NextResponse.json(
-            { 
-              error: 'Permission denied. Please make sure you are logged in correctly.',
-              details: 'RLS policy violation' 
-            },
-            { status: 403 }
-          )
-        }
-        throw insertError
-      }
+      if (insertError) throw insertError
       cartItem = newItem
     }
 
-    // Format response
     const formattedItem = {
       id: cartItem.id,
       productId: cartItem.product_id,
       variantId: cartItem.variant_id,
       quantity: cartItem.quantity,
-      price: cartItem.products.price,
+      price: cartItem.price, // use stored price
       product: {
         title: cartItem.products.title,
         images: cartItem.products.images,
@@ -235,7 +209,6 @@ export async function POST(request: NextRequest) {
       item: formattedItem,
       message: 'Added to cart successfully',
     }, { status: 201 })
-
   } catch (error: any) {
     console.error('Add to cart error:', error)
     return NextResponse.json(

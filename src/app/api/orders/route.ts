@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 import { verifyAuth } from '@/lib/auth/middleware'
 
+// api/orders/route.ts
+
 // POST create new order (without order number initially)
 export async function POST(request: NextRequest) {
   try {

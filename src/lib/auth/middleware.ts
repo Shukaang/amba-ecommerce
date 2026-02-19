@@ -1,3 +1,4 @@
+// lib/auth/middleware.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from './jwt'
 
@@ -13,6 +14,7 @@ export async function verifyAuth(request: NextRequest) {
     return null
   }
 
+  // Return the full decoded user info
   return decoded
 }
 
@@ -26,6 +28,9 @@ export function withAuth(handler: Function) {
         { status: 401 }
       )
     }
+
+    // Attach user to request
+    ;(request as any).user = user
 
     return handler(request, ...args)
   }

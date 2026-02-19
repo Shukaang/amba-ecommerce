@@ -13,6 +13,7 @@ import {
   Shield,
   Eye,
   LayoutGrid,
+  Star,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -26,11 +27,11 @@ const navigation = [
   { name: "Categories", href: "/admin/categories", icon: LayoutGrid },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+  { name: "Ratings", href: "/admin/ratings", icon: Star },
 ];
 
 const superAdminNavigation = [
-  { name: "Visitor Tracking", href: "/admin/tracking", icon: Eye },
+  { name: "Visitor Tracking", href: "/admin/visitor-tracking", icon: Eye },
   { name: "Security", href: "/admin/security", icon: Shield },
 ];
 

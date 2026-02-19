@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 import { withAdminAuth } from '@/lib/auth/middleware'
+import { slugify } from '@/lib/utils/slug'
 
-// GET all products
-async function GET(request: NextRequest) {
+// GET /api/products - List products with filters
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('category')
     const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const featured = searchParams.get('featured') === 'true'
+    const sort = searchParams.get('sort') || 'newest'
+    const isNew = searchParams.get('new') === 'true'
 
     const supabase = await createAdminClient()
 
@@ -18,13 +22,17 @@ async function GET(request: NextRequest) {
       .select(`
         *,
         categories(title),
-        product_variants(*),
-        create_at,
-        updated_at
+        product_variants(*)
       `, { count: 'exact' })
 
     // Apply filters
-    if (categoryId) {
+    if (isNew) {
+      const twoWeeksAgo = new Date()
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+      query = query.gte('created_at', twoWeeksAgo.toISOString())
+    }
+
+    if (categoryId && categoryId !== 'all' && categoryId !== 'men' && categoryId !== 'women' && categoryId !== 'accessories') {
       query = query.eq('category_id', categoryId)
     }
 
@@ -32,17 +40,26 @@ async function GET(request: NextRequest) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
+    if (featured) {
+      query = query.gte('average_rating', 4.0)
+    }
+
+    // Sorting
+    if (sort === 'newest') {
+      query = query.order('created_at', { ascending: false })
+    } else if (sort === 'trending') {
+      query = query.order('average_rating', { ascending: false })
+    } else {
+      query = query.order('created_at', { ascending: false })
+    }
+
     // Pagination
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data: products, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(from, to)
+    const { data: products, error, count } = await query.range(from, to)
 
-    if (error) {
-      throw error
-    }
+    if (error) throw error
 
     return NextResponse.json({
       products: products || [],
@@ -52,7 +69,6 @@ async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Get products error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch products' },
       { status: 500 }
@@ -60,36 +76,40 @@ async function GET(request: NextRequest) {
   }
 }
 
-// POST create new product with variants
+// POST /api/products - Create new product
 async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-
-    // Validate required fields
-    if (!body.title || !body.description || !body.price) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
     const supabase = await createAdminClient()
 
-    // Start transaction (we'll handle manually as Supabase doesn't have transactions)
+    // Generate slug from title
+    let slug = slugify(body.title)
+
+    // Check if slug exists and make it unique
+    const { data: existing } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (existing) {
+      // Add timestamp to make it unique
+      slug = `${slug}-${Date.now()}`
+    }
+
+    // Start transaction
     try {
-      // Create the product
+      // Insert the product
       const { data: product, error: productError } = await supabase
         .from('products')
-        .insert([
-          {
-            title: body.title,
-            description: body.description,
-            category_id: body.category_id || null,
-            price: body.price,
-            images: body.images || [],
-            average_rating: 0,
-          },
-        ])
+        .insert({
+          title: body.title,
+          slug,
+          description: body.description,
+          category_id: body.category_id || null,
+          price: body.price,
+          images: body.images || [],
+        })
         .select()
         .single()
 
@@ -97,31 +117,22 @@ async function POST(request: NextRequest) {
         throw productError
       }
 
-      // Create variants if they exist
+      // Insert variants if they exist
       if (body.variants && body.variants.length > 0) {
-        // Filter out empty variants (all empty attributes)
-        const validVariants = body.variants.filter((variant: any) => 
-          variant.color?.trim() || variant.size?.trim() || variant.unit?.trim()
-        )
+        const variantData = body.variants.map((variant: any) => ({
+          product_id: product.id,
+          color: variant.color || null,
+          size: variant.size || null,
+          unit: variant.unit || null,
+          price: variant.price || body.price,
+        }))
 
-        if (validVariants.length > 0) {
-          const variantData = validVariants.map((variant: any) => ({
-            product_id: product.id,
-            color: variant.color?.trim() || null,
-            size: variant.size?.trim() || null,
-            unit: variant.unit?.trim() || null,
-            price: variant.price || body.price, // Fallback to base price if not specified
-          }))
+        const { error: variantsError } = await supabase
+          .from('product_variants')
+          .insert(variantData)
 
-          const { error: variantsError } = await supabase
-            .from('product_variants')
-            .insert(variantData)
-
-          if (variantsError) {
-            // Rollback: delete the created product if variants fail
-            await supabase.from('products').delete().eq('id', product.id)
-            throw variantsError
-          }
+        if (variantsError) {
+          throw variantsError
         }
       }
 
@@ -159,8 +170,5 @@ async function POST(request: NextRequest) {
   }
 }
 
-// Export handlers with auth middleware
-export const GETHandler = withAdminAuth(GET)
 export const POSTHandler = withAdminAuth(POST)
-
-export { GETHandler as GET, POSTHandler as POST }
+export { POSTHandler as POST }

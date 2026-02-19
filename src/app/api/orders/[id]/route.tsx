@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/supabaseServer";
 
+// api/orders/[id]/route.ts
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },

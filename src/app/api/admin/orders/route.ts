@@ -7,7 +7,7 @@ const createOrderSchema = z.object({
   shippingInfo: z.string().min(10, 'Shipping info is required'),
 })
 
-// GET /api/orders - Get user's orders
+// GET /api/admin/orders/route.ts - Get user's orders
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const userId = request.headers.get('x-user-id')

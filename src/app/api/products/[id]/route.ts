@@ -36,14 +36,13 @@ async function GET(
   }
 }
 
-// PUT update product with variants
-async function PUT(
+// PUT update product with variants (renamed to updateProduct to avoid conflict)
+async function updateProduct(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const body = await request.json()
-
     const supabase = await createAdminClient()
 
     // Start transaction
@@ -136,8 +135,8 @@ async function PUT(
   }
 }
 
-// DELETE product and its variants
-async function DELETE(
+// DELETE product and its variants (renamed to deleteProduct to avoid conflict)
+async function deleteProduct(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -191,9 +190,10 @@ async function DELETE(
   }
 }
 
-// Export handlers with auth middleware
-export const GETHandler = GET // Public access
-export const PUTHandler = withAdminAuth(PUT)
-export const DELETEHandler = withAdminAuth(DELETE)
+// EXPORTS
+// Public access - export GET directly
+export { GET }
 
-export { GETHandler as GET, PUTHandler as PUT, DELETEHandler as DELETE }
+// Apply auth middleware to the renamed functions and export as PUT/DELETE
+export const PUT = withAdminAuth(updateProduct)
+export const DELETE = withAdminAuth(deleteProduct)

@@ -245,7 +245,7 @@ export default function ProductsTable({
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link
-                          href={`/admin/products/edit/${product.id}`}
+                          href={`/admin/products/${product.id}/edit`}
                           className="cursor-pointer"
                         >
                           <Edit className="h-4 w-4 mr-2" />
