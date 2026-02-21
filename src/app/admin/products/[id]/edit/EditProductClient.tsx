@@ -495,7 +495,7 @@ export default function EditProductClient({
                                 className="flex items-center text-sm"
                               >
                                 <Tag className="h-3 w-3 mr-1" />
-                                Price ($) *
+                                Price (Br) *
                               </Label>
                               <Input
                                 id={`price-${index}`}

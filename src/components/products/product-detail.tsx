@@ -551,7 +551,7 @@ export default function ProductDetailClient({
             <div className="border-y border-gray-200 py-6">
               <div className="flex items-baseline gap-3">
                 <span className="text-4xl font-bold text-gray-900">
-                  ${getDisplayPrice().toFixed(2)}
+                  Br{getDisplayPrice().toLocaleString("en-US")}
                 </span>
                 {product.product_variants.length > 0 && (
                   <span className="text-sm text-gray-500">
@@ -592,7 +592,7 @@ export default function ProductDetailClient({
                               {variantName || "Standard"}
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
-                              ${variant.price.toFixed(2)}
+                              Br{variant.price.toLocaleString("en-US")}
                             </div>
                           </div>
                           {isSelected && (
@@ -629,7 +629,8 @@ export default function ProductDetailClient({
                   </button>
                 </div>
                 <div className="text-sm text-gray-600">
-                  Total: ${(quantity * getDisplayPrice()).toFixed(2)}
+                  Total: Br
+                  {(quantity * getDisplayPrice()).toLocaleString("en-US")}
                 </div>
               </div>
             </div>
@@ -953,7 +954,7 @@ export default function ProductDetailClient({
                       </h3>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-base font-bold text-[#f73a00]">
-                          ${rec.price.toFixed(2)}
+                          Br{rec.price.toLocaleString("en-US")}
                         </span>
                         <div className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-[#f73a00] text-[#f73a00]" />

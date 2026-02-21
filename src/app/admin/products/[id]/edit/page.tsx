@@ -379,7 +379,7 @@ export default function EditProductPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="price">
-                  {hasVariants ? "Base Price ($) *" : "Price ($) *"}
+                  {hasVariants ? "Base Price (Br) *" : "Price (Br) *"}
                 </Label>
                 <Input
                   id="price"
@@ -550,7 +550,7 @@ export default function EditProductPage() {
                               className="flex items-center text-sm"
                             >
                               <Tag className="h-3 w-3 mr-1" />
-                              Price ($) *
+                              Price (Br) *
                             </Label>
                             <Input
                               id={`price-${index}`}

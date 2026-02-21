@@ -93,7 +93,10 @@ export default function RecentProducts({ products }: RecentProductsProps) {
                     {product.title}
                   </h4>
                   <Badge variant="outline" className="ml-2">
-                    ${parseFloat(product.price.toString()).toFixed(2)}
+                    Br
+                    {parseFloat(product.price.toString()).toLocaleString(
+                      "en-US",
+                    )}
                   </Badge>
                 </div>
                 <div className="mt-1 flex items-center text-sm text-gray-500">

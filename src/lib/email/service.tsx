@@ -68,7 +68,7 @@ export async function sendOrderConfirmationEmail(
         `<tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.title}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${item.price.toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${item.price.toLocaleString("en-US")}</td>
     </tr>`,
     )
     .join("");
@@ -91,7 +91,7 @@ export async function sendOrderConfirmationEmail(
       <tfoot>
         <tr>
           <td colspan="2" style="padding: 8px; text-align: right;"><strong>Total:</strong></td>
-          <td style="padding: 8px; text-align: right;"><strong>$${totalPrice.toFixed(2)}</strong></td>
+          <td style="padding: 8px; text-align: right;"><strong>$${totalPrice.toLocaleString("en-US")}</strong></td>
         </tr>
       </tfoot>
     </table>
@@ -103,7 +103,7 @@ export async function sendOrderConfirmationEmail(
     to: email,
     subject: `Order Confirmation - #${orderId.slice(0, 8)}`,
     html,
-    text: `Order ID: ${orderId}\nTotal: $${totalPrice.toFixed(2)}`,
+    text: `Order ID: ${orderId}\nTotal: $${totalPrice.toLocaleString("en-US")}`,
   });
 }
 

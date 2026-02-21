@@ -337,7 +337,7 @@ export default function OrdersTable({
                     <td className="px-6 py-4">
                       <div className="flex items-center text-sm font-medium text-gray-900">
                         <DollarSign className="h-4 w-4 text-gray-400 mr-1" />
-                        {order.total_price.toFixed(2)}
+                        {order.total_price.toLocaleString("en-US")}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -549,13 +549,14 @@ export default function OrdersTable({
                                     </div>
                                     <div className="text-right">
                                       <div className="text-lg font-bold text-gray-900">
-                                        $
-                                        {(item.price * item.quantity).toFixed(
-                                          2,
-                                        )}
+                                        Br
+                                        {(
+                                          item.price * item.quantity
+                                        ).toLocaleString("en-US")}
                                       </div>
                                       <div className="text-sm text-gray-500">
-                                        ${item.price.toFixed(2)} each
+                                        Br{item.price.toLocaleString("en-US")}{" "}
+                                        each
                                       </div>
                                     </div>
                                   </div>
@@ -570,7 +571,10 @@ export default function OrdersTable({
                                       Total
                                     </div>
                                     <div className="text-2xl font-bold text-gray-900">
-                                      ${order.total_price.toFixed(2)}
+                                      Br
+                                      {order.total_price.toLocaleString(
+                                        "en-US",
+                                      )}
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-2">

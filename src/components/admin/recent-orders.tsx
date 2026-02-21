@@ -181,7 +181,10 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      ${parseFloat(order.total_price.toString()).toFixed(2)}
+                      Br
+                      {parseFloat(order.total_price.toString()).toLocaleString(
+                        "en-US",
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

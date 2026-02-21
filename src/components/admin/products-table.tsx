@@ -297,7 +297,8 @@ export default function ProductsTable({
                   </Badge>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  ${parseFloat(product.price.toString()).toFixed(2)}
+                  Br
+                  {parseFloat(product.price.toString()).toLocaleString("en-US")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
