@@ -8,11 +8,9 @@ import { useCart } from "@/lib/cart/context";
 import {
   Star,
   ShoppingCart,
-  Package,
   Check,
   Heart,
   Share2,
-  ChevronLeft,
   ChevronRight,
   Clock,
   Edit2,
@@ -190,24 +188,28 @@ export default function ProductDetailClient({
     const animationEl = document.createElement("div");
     animationEl.className = "fixed z-[100] pointer-events-none";
     animationEl.innerHTML = `
-      <div class="flex items-center justify-center h-10 w-10 rounded-full bg-[#f73a00] text-white shadow-lg">
-        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-        </svg>
-      </div>
-    `;
+    <div class="flex items-center justify-center h-10 w-10 rounded-full bg-[#f73a00] text-white shadow-lg">
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    </div>
+  `;
+
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
 
-    const cartIcon = document.querySelector('a[href="/cart"]');
-    const endRect = cartIcon?.getBoundingClientRect() || {
-      left: window.innerWidth - 100,
-      top: 80,
-    };
+    const cartIcon = document.querySelector(
+      'a[href="/cart"]',
+    ) as HTMLElement | null;
+
+    // 🔥 ALWAYS RETURN A REAL DOMRect
+    const endRect: DOMRect = cartIcon
+      ? cartIcon.getBoundingClientRect()
+      : new DOMRect(window.innerWidth - 100, 80, 40, 40);
 
     const startX = startRect.left + startRect.width / 2 - 20;
     const startY = startRect.top + startRect.height / 2 - 20;
-    const endX = endRect.left + (endRect.width || 0) / 2 - 20;
-    const endY = endRect.top + (endRect.height || 0) / 2 - 20;
+    const endX = endRect.left + endRect.width / 2 - 20;
+    const endY = endRect.top + endRect.height / 2 - 20;
 
     Object.assign(animationEl.style, {
       left: `${startX}px`,

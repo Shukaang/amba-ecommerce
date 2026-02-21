@@ -5,9 +5,10 @@ import { withAdminAuth } from '@/lib/auth/middleware'
 // GET single product with variants
 async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createAdminClient()
 
     const { data: product, error } = await supabase
@@ -18,7 +19,7 @@ async function GET(
         product_variants(*),
         ratings(*, users(name, email))
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -39,9 +40,10 @@ async function GET(
 // PUT update product with variants (renamed to updateProduct to avoid conflict)
 async function updateProduct(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const supabase = await createAdminClient()
 
@@ -58,7 +60,7 @@ async function updateProduct(
           images: body.images || [],
           updated_at: new Date().toISOString(),
         })
-        .eq('id', params.id)
+        .eq('id', id)
         .select()
         .single()
 
@@ -72,7 +74,7 @@ async function updateProduct(
         await supabase
           .from('product_variants')
           .delete()
-          .eq('product_id', params.id)
+          .eq('product_id', id)
 
         // Then insert new variants if they exist
         if (body.variants && body.variants.length > 0) {
@@ -83,7 +85,7 @@ async function updateProduct(
 
           if (validVariants.length > 0) {
             const variantData = validVariants.map((variant: any) => ({
-              product_id: params.id,
+              product_id: id,
               color: variant.color?.trim() || null,
               size: variant.size?.trim() || null,
               unit: variant.unit?.trim() || null,
@@ -109,7 +111,7 @@ async function updateProduct(
           categories(title),
           product_variants(*)
         `)
-        .eq('id', params.id)
+        .eq('id', id)
         .single()
 
       if (fetchError) {
@@ -138,16 +140,17 @@ async function updateProduct(
 // DELETE product and its variants (renamed to deleteProduct to avoid conflict)
 async function deleteProduct(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createAdminClient()
 
     // Check if product exists
     const { data: existingProduct } = await supabase
       .from('products')
       .select('id, title')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingProduct) {
@@ -161,7 +164,7 @@ async function deleteProduct(
     const { error: variantsError } = await supabase
       .from('product_variants')
       .delete()
-      .eq('product_id', params.id)
+      .eq('product_id', id)
 
     if (variantsError) {
       console.error('Delete variants error:', variantsError)
@@ -171,7 +174,7 @@ async function deleteProduct(
     const { error: productError } = await supabase
       .from('products')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (productError) {
       throw productError

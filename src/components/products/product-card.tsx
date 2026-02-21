@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Star, ShoppingBag, Eye, Heart } from "lucide-react";
+import { Star, ShoppingBag, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/lib/cart/context";
@@ -43,16 +43,21 @@ export default function PremiumProductCard({
   const { user } = useAuth();
   const router = useRouter();
 
-  const mainImage =
-    product.images?.[0] ||
-    "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2070&auto=format&fit=crop";
+  const mainImage = product.images?.[0];
   const secondaryImage = product.images?.[1] || mainImage;
-  const hasVariants =
-    product.product_variants && product.product_variants.length > 0;
+
+  // Safely handle variants
+  const variantPrices = product.product_variants?.map((v) => v.price) ?? [];
+  const hasVariants = variantPrices.length > 0;
   const minPrice = hasVariants
-    ? Math.min(...product.product_variants.map((v) => v.price), product.price)
+    ? Math.min(...variantPrices, product.price)
     : product.price;
 
+  /**
+   * createCartAnimation
+   * - startRect MUST be a real DOMRect (not a union).
+   * - This function always works with DOMRect instances (no unions).
+   */
   const createCartAnimation = (startRect: DOMRect) => {
     const animationEl = document.createElement("div");
     animationEl.className = "fixed z-[100] pointer-events-none";
@@ -64,18 +69,31 @@ export default function PremiumProductCard({
       </div>
     `;
 
+    // Append animation element container (if it exists)
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
 
-    const cartIcon = document.querySelector('a[href="/cart"]');
-    const endRect = cartIcon?.getBoundingClientRect() || {
-      left: window.innerWidth - 100,
-      top: 80,
-    };
+    // Find cart icon element (explicitly typed)
+    const cartIcon = document.querySelector(
+      'a[href="/cart"]',
+    ) as Element | null;
 
+    // ALWAYS produce a DOMRect. No unions, no object literal fallbacks.
+    let endRect: DOMRect;
+
+    if (cartIcon) {
+      const r = cartIcon.getBoundingClientRect();
+      // Copy into a real DOMRect instance
+      endRect = new DOMRect(r.x, r.y, r.width, r.height);
+    } else {
+      // Fallback: create a real DOMRect with sensible values
+      endRect = new DOMRect(window.innerWidth - 100, 80, 40, 40);
+    }
+
+    // Now these are guaranteed DOMRect properties (width/height exist)
     const startX = startRect.left + startRect.width / 2 - 20;
     const startY = startRect.top + startRect.height / 2 - 20;
-    const endX = endRect.left + (endRect.width || 0) / 2 - 20;
-    const endY = endRect.top + (endRect.height || 0) / 2 - 20;
+    const endX = endRect.left + endRect.width / 2 - 20;
+    const endY = endRect.top + endRect.height / 2 - 20;
 
     Object.assign(animationEl.style, {
       left: `${startX}px`,
@@ -85,6 +103,7 @@ export default function PremiumProductCard({
       transition: "all 800ms cubic-bezier(0.68, -0.55, 0.265, 1.55)",
     });
 
+    // animate
     setTimeout(() => {
       Object.assign(animationEl.style, {
         transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0.5)`,
@@ -97,6 +116,11 @@ export default function PremiumProductCard({
     }, 800);
   };
 
+  /**
+   * handleAddToCart
+   * - Cast e.currentTarget to HTMLElement and then convert its rect to a real DOMRect
+   * - This avoids any DOMRect | { left, top } union widening by TypeScript
+   */
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -114,7 +138,11 @@ export default function PremiumProductCard({
 
     setIsAdding(true);
     try {
-      const buttonRect = e.currentTarget.getBoundingClientRect();
+      // Force a real DOMRect by constructing one from the element's rect
+      const currentEl = e.currentTarget as HTMLElement;
+      const r = currentEl.getBoundingClientRect();
+      const buttonRect = new DOMRect(r.x, r.y, r.width, r.height);
+
       createCartAnimation(buttonRect);
 
       await addToCart({
@@ -130,7 +158,7 @@ export default function PremiumProductCard({
         setIsAdding(false);
       }, 800);
     } catch (error: any) {
-      toast.error(error.message || "Failed to add to cart");
+      toast.error(error?.message || "Failed to add to cart");
       setIsAdding(false);
     }
   };
@@ -178,9 +206,7 @@ export default function PremiumProductCard({
           {/* Secondary Image */}
           {secondaryImage !== mainImage && (
             <div
-              className={`absolute inset-0 transition-opacity duration-700 ${
-                isHovered ? "opacity-100" : "opacity-0"
-              }`}
+              className={`absolute inset-0 transition-opacity duration-700 ${isHovered ? "opacity-100" : "opacity-0"}`}
             >
               <img
                 src={secondaryImage}
@@ -194,13 +220,22 @@ export default function PremiumProductCard({
           {/* Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-          {/* Wishlist Button - always visible on mobile, appears on hover on desktop */}
+          {/* Badges - always visible on left */}
+          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+            {product.average_rating >= 4.5 && (
+              <Badge className="bg-[#f73a00] hover:bg-[#fe4208] text-white text-sm border-0 shadow-md">
+                <Star className="h-3 w-3 mr-1" /> Premium
+              </Badge>
+            )}
+          </div>
+
+          {/* Wishlist Button */}
           <div
             className={`
-    absolute top-4 right-4 flex-col gap-2 z-10
-    md:opacity-0 md:translate-x-4 md:group-hover:opacity-100 md:group-hover:translate-x-0
-    transition-all duration-300
-  `}
+              absolute top-4 right-4 flex-col gap-2 z-10
+              md:opacity-0 md:translate-x-4 md:group-hover:opacity-100 md:group-hover:translate-x-0
+              transition-all duration-300
+            `}
           >
             <button
               onClick={toggleWishlist}
@@ -210,16 +245,12 @@ export default function PremiumProductCard({
               }
             >
               <Heart
-                className={`h-5 w-5 ${
-                  isWishlisted
-                    ? "fill-[#f73a00] text-[#f73a00]"
-                    : "text-[#f73a00]"
-                }`}
+                className={`h-5 w-5 ${isWishlisted ? "fill-[#f73a00] text-[#f73a00]" : "text-[#f73a00]"}`}
               />
             </button>
           </div>
 
-          {/* Quick Add Button - only on desktop (hover), hidden on mobile */}
+          {/* Quick Add Button */}
           <div
             className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
           >
@@ -235,9 +266,8 @@ export default function PremiumProductCard({
           </div>
         </div>
 
-        {/* Product Info - flex-1 to fill remaining space */}
+        {/* Product Info */}
         <div className="py-4 px-2 flex-1">
-          {/* Title */}
           <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-[#f73a00] transition-colors">
             {product.title}
           </h3>
@@ -248,11 +278,7 @@ export default function PremiumProductCard({
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`h-4 w-4 ${
-                    star <= Math.round(product.average_rating)
-                      ? "fill-[#f73a00] text-[#f73a00]"
-                      : "fill-gray-200 text-gray-200"
-                  }`}
+                  className={`h-4 w-4 ${star <= Math.round(product.average_rating) ? "fill-[#f73a00] text-[#f73a00]" : "fill-gray-200 text-gray-200"}`}
                 />
               ))}
             </div>
@@ -269,10 +295,7 @@ export default function PremiumProductCard({
               </span>
               {hasVariants && (
                 <div className="text-xs text-gray-500">
-                  From ETB
-                  {Math.min(
-                    ...product.product_variants!.map((v) => v.price),
-                  ).toLocaleString("en-US")}
+                  From ETB {Math.min(...variantPrices).toLocaleString("en-US")}
                 </div>
               )}
             </div>

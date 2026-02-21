@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import Image from "next/image";
 
+// ✅ Updated Product interface – categories now includes id
 interface Product {
   id: string;
   title: string;
@@ -31,6 +32,7 @@ interface Product {
   average_rating: number;
   images: string[];
   categories: {
+    id: string;
     title: string;
   } | null;
   created_at: string;

@@ -22,9 +22,10 @@ async function updateProductAverage(productId: string) {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; ratingId: string } }
+  { params }: { params: Promise<{ id: string; ratingId: string }> }
 ) {
   try {
+    const { id, ratingId } = await params
     const user = await verifyAuth(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -41,7 +42,7 @@ export async function PUT(
     const { data: existing, error: fetchError } = await supabase
       .from('ratings')
       .select('user_id')
-      .eq('id', params.ratingId)
+      .eq('id', ratingId)
       .single()
 
     if (fetchError || !existing) {
@@ -60,13 +61,13 @@ export async function PUT(
         moderated: false,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.ratingId)
+      .eq('id', ratingId)
       .select(`*, users ( name, email )`)
       .single()
 
     if (error) throw error
 
-    await updateProductAverage(params.id)
+    await updateProductAverage(id)
 
     return NextResponse.json({ rating: updated })
   } catch (error: any) {
@@ -76,9 +77,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; ratingId: string } }
+  { params }: { params: Promise<{ id: string; ratingId: string }> }
 ) {
   try {
+    const { id, ratingId } = await params
     const user = await verifyAuth(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -88,7 +90,7 @@ export async function DELETE(
     const { data: existing, error: fetchError } = await supabase
       .from('ratings')
       .select('user_id')
-      .eq('id', params.ratingId)
+      .eq('id', ratingId)
       .single()
 
     if (fetchError || !existing) {
@@ -101,11 +103,11 @@ export async function DELETE(
     const { error } = await supabase
       .from('ratings')
       .delete()
-      .eq('id', params.ratingId)
+      .eq('id', ratingId)
 
     if (error) throw error
 
-    await updateProductAverage(params.id)
+    await updateProductAverage(id)
 
     return NextResponse.json({ message: 'Rating deleted' })
   } catch (error: any) {

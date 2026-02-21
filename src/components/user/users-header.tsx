@@ -72,7 +72,7 @@ export default function UserHeader() {
   const [activeMainCategory, setActiveMainCategory] = useState<Category | null>(
     null,
   );
-  const dropdownTimeout = useRef<NodeJS.Timeout>();
+  const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const supabase = createClient();
 

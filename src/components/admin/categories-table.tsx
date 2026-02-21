@@ -30,31 +30,23 @@ interface CategoriesTableProps {
 export default function CategoriesTable({ categories }: CategoriesTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ✅ Build tree ONCE from ALL categories
   const categoryTree = useMemo(() => {
     const map = new Map<string, CategoryNode>();
-
     categories.forEach((cat) => map.set(cat.id, { ...cat, children: [] }));
-
     const roots: CategoryNode[] = [];
-
     categories.forEach((cat) => {
       const node = map.get(cat.id)!;
-
       if (cat.parent_id && map.has(cat.parent_id)) {
         map.get(cat.parent_id)!.children.push(node);
       } else {
         roots.push(node);
       }
     });
-
     return roots;
   }, [categories]);
 
-  // ✅ Filter function (recursive)
   const matchesSearch = (category: CategoryNode): boolean => {
     const query = searchQuery.toLowerCase();
-
     return (
       category.title.toLowerCase().includes(query) ||
       category.description?.toLowerCase().includes(query) ||
@@ -68,7 +60,6 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
         const res = await fetch(`/api/categories/${categoryId}`, {
           method: "DELETE",
         });
-
         if (res.ok) {
           alert("Category deleted successfully");
           window.location.reload();
@@ -83,11 +74,14 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
     }
   };
 
-  const renderTree = (nodes: CategoryNode[], level = 0): JSX.Element[] => {
+  // ✅ Use React.ReactElement[] instead of JSX.Element[]
+  const renderTree = (
+    nodes: CategoryNode[],
+    level = 0,
+  ): React.ReactElement[] => {
     return nodes.flatMap((cat) => {
       if (searchQuery && !matchesSearch(cat)) return [];
 
-      // Check if it's a main category (no parent_id) or subcategory (has parent_id)
       const isMainCategory = !cat.parent_id;
 
       return [
@@ -97,14 +91,12 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
               className="flex items-center gap-3"
               style={{ paddingLeft: `${level * 24}px` }}
             >
-              {/* Folder Icon */}
               {cat.children.length > 0 ? (
                 <FolderOpen className="h-4 w-4 text-blue-500 shrink-0" />
               ) : (
                 <Folder className="h-4 w-4 text-gray-400 shrink-0" />
               )}
 
-              {/* Category Image - Only show for main categories */}
               {isMainCategory && cat.image ? (
                 <div className="h-10 w-10 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center shrink-0">
                   <img
@@ -125,13 +117,12 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
                   <ImageIcon className="h-4 w-4 text-gray-400" />
                 </div>
               ) : (
-                <div className="h-10 w-10 shrink-0"></div> // Spacer for alignment
+                <div className="h-10 w-10 shrink-0"></div>
               )}
 
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-gray-900 truncate">
                   {cat.title}
-                  {/* Indicator for subcategories */}
                   {!isMainCategory && (
                     <span className="ml-2 text-xs text-gray-500">
                       (Subcategory)

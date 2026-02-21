@@ -4,9 +4,10 @@ import { verifyAuth } from '@/lib/auth/middleware'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await verifyAuth(request)
     const supabase = await createAdminClient()
 
@@ -16,7 +17,7 @@ export async function GET(
         *,
         users ( name, email )
       `)
-      .eq('product_id', params.id)
+      .eq('product_id', id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -35,9 +36,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await verifyAuth(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -54,7 +56,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from('ratings')
       .select('id')
-      .eq('product_id', params.id)
+      .eq('product_id', id)
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -65,7 +67,7 @@ export async function POST(
     const { data: newRating, error } = await supabase
       .from('ratings')
       .insert({
-        product_id: params.id,
+        product_id: id,
         user_id: user.id,
         rating,
         review: review || null,
