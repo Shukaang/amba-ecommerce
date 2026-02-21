@@ -12,6 +12,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import {
   Card,
@@ -36,6 +38,7 @@ import { Switch } from "@/components/ui/switch";
 interface Category {
   id: string;
   title: string;
+  parent_id: string | null;
 }
 
 interface ProductVariant {
@@ -50,6 +53,9 @@ export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryTree, setCategoryTree] = useState<
+    { root: Category; children: Category[] }[]
+  >([]);
   const [hasVariants, setHasVariants] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
   const [formData, setFormData] = useState({
@@ -73,6 +79,28 @@ export default function NewProductPage() {
       const data = await res.json();
       if (res.ok) {
         setCategories(data.categories);
+        // Build tree: separate roots and children
+        const childrenMap = new Map<string, Category[]>();
+        const roots: Category[] = [];
+        data.categories.forEach((cat: Category) => {
+          if (cat.parent_id) {
+            if (!childrenMap.has(cat.parent_id)) {
+              childrenMap.set(cat.parent_id, []);
+            }
+            childrenMap.get(cat.parent_id)!.push(cat);
+          } else {
+            roots.push(cat);
+          }
+        });
+        // Sort roots and children alphabetically
+        roots.sort((a, b) => a.title.localeCompare(b.title));
+        const tree = roots.map((root) => ({
+          root,
+          children: (childrenMap.get(root.id) || []).sort((a, b) =>
+            a.title.localeCompare(b.title),
+          ),
+        }));
+        setCategoryTree(tree);
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
@@ -276,10 +304,30 @@ export default function NewProductPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Uncategorized</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.title}
-                      </SelectItem>
+                    {categoryTree.map(({ root, children }) => (
+                      <div key={root.id}>
+                        {/* Root category as selectable option */}
+                        <SelectItem value={root.id} className="font-medium">
+                          {root.title}
+                        </SelectItem>
+                        {/* Children as indented options */}
+                        {children.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel className="sr-only">
+                              {root.title} subcategories
+                            </SelectLabel>
+                            {children.map((child) => (
+                              <SelectItem
+                                key={child.id}
+                                value={child.id}
+                                className="pl-6"
+                              >
+                                {child.title}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>

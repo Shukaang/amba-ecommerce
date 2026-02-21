@@ -7,21 +7,21 @@ import { Plus } from "lucide-react";
 export default async function AdminProductsPage() {
   const supabase = await createClient();
 
-  // Fetch products with categories
+  // Fetch products with categories (include id and title)
   const { data: products } = await supabase
     .from("products")
     .select(
       `
       *,
-      categories(title)
+      categories(id, title)
     `,
     )
     .order("created_at", { ascending: false });
 
-  // Fetch categories for filter
+  // Fetch all categories with parent_id for hierarchy
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, title")
+    .select("id, title, parent_id")
     .order("title");
 
   return (
