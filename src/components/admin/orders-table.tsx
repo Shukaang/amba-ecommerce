@@ -276,8 +276,8 @@ export default function OrdersTable({
               <option value="all">All Status</option>
               <option value="PENDING">Pending</option>
               <option value="CONFIRMED">Confirmed</option>
-              <option value="READY">Ready</option>
               <option value="SHIPPED">Shipped</option>
+              <option value="READY">Ready</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELED">Canceled</option>
               <option value="FAILED">Failed</option>
@@ -353,8 +353,8 @@ export default function OrdersTable({
                         >
                           <option value="PENDING">Pending</option>
                           <option value="CONFIRMED">Confirmed</option>
-                          <option value="READY">Ready</option>
                           <option value="SHIPPED">Shipped</option>
+                          <option value="READY">Ready</option>
                           <option value="COMPLETED">Completed</option>
                           <option value="CANCELED">Canceled</option>
                           <option value="FAILED">Failed</option>

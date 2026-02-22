@@ -54,8 +54,8 @@ export async function PUT(
     const validStatuses = [
       "PENDING",
       "CONFIRMED",
-      "READY",
       "SHIPPED",
+      "READY",
       "COMPLETED",
       "CANCELED",
       "FAILED",

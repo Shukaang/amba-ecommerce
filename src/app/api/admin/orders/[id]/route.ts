@@ -30,7 +30,7 @@ export async function PUT(
     const { status } = body
 
     // Validate status
-    const validStatuses = ['PENDING', 'CONFIRMED', 'READY', 'SHIPPED', 'COMPLETED', 'CANCELED', 'FAILED']
+    const validStatuses = ['PENDING', 'CONFIRMED', 'SHIPPED', 'READY', 'COMPLETED', 'CANCELED', 'FAILED']
 
     if (!status) {
       return NextResponse.json(
