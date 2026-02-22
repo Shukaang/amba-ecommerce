@@ -39,6 +39,9 @@ export default function EditCategoryPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [parentOptions, setParentOptions] = useState<
+    { id: string; title: string; depth: number }[]
+  >([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -68,6 +71,10 @@ export default function EditCategoryPage() {
           (cat: Category) => cat.id !== categoryId,
         );
         setCategories(filteredCategories);
+
+        // Build options with indentation from filtered categories
+        const options = buildCategoryOptions(filteredCategories);
+        setParentOptions(options);
       }
 
       if (categoryRes.ok) {
@@ -88,6 +95,23 @@ export default function EditCategoryPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buildCategoryOptions = (
+    cats: Category[],
+    parentId: string | null = null,
+    depth = 0,
+  ): { id: string; title: string; depth: number }[] => {
+    let options: { id: string; title: string; depth: number }[] = [];
+    const children = cats
+      .filter((cat) => (cat.parent_id || null) === parentId)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    for (const child of children) {
+      options.push({ id: child.id, title: child.title, depth });
+      options = options.concat(buildCategoryOptions(cats, child.id, depth + 1));
+    }
+    return options;
   };
 
   const handleChange = (
@@ -219,11 +243,15 @@ export default function EditCategoryPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-80">
                     <SelectItem value="null">None (Main Category)</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.title}
+                    {parentOptions.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        className={option.depth > 0 ? "pl-6" : ""}
+                      >
+                        {option.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

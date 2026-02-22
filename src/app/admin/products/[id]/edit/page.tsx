@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 interface Category {
   id: string;
   title: string;
+  parent_id: string | null;
 }
 
 interface ProductVariant {
@@ -65,6 +66,9 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    { id: string; title: string; depth: number }[]
+  >([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [hasVariants, setHasVariants] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
@@ -96,13 +100,15 @@ export default function EditProductPage() {
 
       if (categoriesRes.ok) {
         setCategories(categoriesData.categories);
+        // Build category options with indentation
+        const options = buildCategoryOptions(categoriesData.categories);
+        setCategoryOptions(options);
       }
 
       if (productRes.ok && productData.product) {
         const product = productData.product;
         setProduct(product);
 
-        // Set form data
         setFormData({
           title: product.title,
           description: product.description,
@@ -111,7 +117,6 @@ export default function EditProductPage() {
           images: product.images.length > 0 ? product.images : [""],
         });
 
-        // Set variants
         if (product.product_variants && product.product_variants.length > 0) {
           setHasVariants(true);
           setShowVariants(true);
@@ -138,6 +143,24 @@ export default function EditProductPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Build flat list with depth for indentation
+  const buildCategoryOptions = (
+    cats: Category[],
+    parentId: string | null = null,
+    depth = 0,
+  ): { id: string; title: string; depth: number }[] => {
+    let options: { id: string; title: string; depth: number }[] = [];
+    const children = cats
+      .filter((cat) => (cat.parent_id || null) === parentId)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    for (const child of children) {
+      options.push({ id: child.id, title: child.title, depth });
+      options = options.concat(buildCategoryOptions(cats, child.id, depth + 1));
+    }
+    return options;
   };
 
   const handleChange = (
@@ -189,14 +212,12 @@ export default function EditProductPage() {
   const validateVariants = (): boolean => {
     if (!hasVariants) return true;
 
-    // Check if all variants have at least one attribute and price
     for (const variant of variants) {
       if (!variant.price.trim()) {
         toast.error("All variants must have a price");
         return false;
       }
 
-      // At least one of color, size, or unit should be filled
       if (
         !variant.color.trim() &&
         !variant.size.trim() &&
@@ -209,7 +230,6 @@ export default function EditProductPage() {
       }
     }
 
-    // Check for duplicate variants
     const variantKeys = variants.map((v) => `${v.color}|${v.size}|${v.unit}`);
     const uniqueKeys = new Set(variantKeys);
     if (uniqueKeys.size !== variants.length) {
@@ -225,13 +245,11 @@ export default function EditProductPage() {
     setSaving(true);
 
     try {
-      // Validate variants if enabled
       if (hasVariants && !validateVariants()) {
         setSaving(false);
         return;
       }
 
-      // Prepare variants data
       const variantsData = hasVariants
         ? variants
             .filter(
@@ -366,11 +384,15 @@ export default function EditProductPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-80">
                     <SelectItem value="null">Uncategorized</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.title}
+                    {categoryOptions.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        className={option.depth > 0 ? "pl-6" : ""}
+                      >
+                        {option.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

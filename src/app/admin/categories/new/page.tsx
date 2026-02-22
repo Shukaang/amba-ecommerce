@@ -32,6 +32,9 @@ export default function NewCategoryPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [parentOptions, setParentOptions] = useState<
+    { id: string; title: string; depth: number }[]
+  >([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -49,11 +52,31 @@ export default function NewCategoryPage() {
       const data = await res.json();
       if (res.ok) {
         setCategories(data.categories);
+        // Build options with indentation
+        const options = buildCategoryOptions(data.categories);
+        setParentOptions(options);
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       toast.error("Failed to load categories");
     }
+  };
+
+  const buildCategoryOptions = (
+    cats: Category[],
+    parentId: string | null = null,
+    depth = 0,
+  ): { id: string; title: string; depth: number }[] => {
+    let options: { id: string; title: string; depth: number }[] = [];
+    const children = cats
+      .filter((cat) => (cat.parent_id || null) === parentId)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    for (const child of children) {
+      options.push({ id: child.id, title: child.title, depth });
+      options = options.concat(buildCategoryOptions(cats, child.id, depth + 1));
+    }
+    return options;
   };
 
   const handleChange = (
@@ -73,7 +96,7 @@ export default function NewCategoryPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          parent_id: formData.parent_id === "null" ? null : formData.parent_id, // Fix here
+          parent_id: formData.parent_id === "null" ? null : formData.parent_id,
         }),
       });
 
@@ -144,11 +167,15 @@ export default function NewCategoryPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-80">
                     <SelectItem value="null">None (Main Category)</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.title}
+                    {parentOptions.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        className={option.depth > 0 ? "pl-6" : ""}
+                      >
+                        {option.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
