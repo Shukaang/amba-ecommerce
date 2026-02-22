@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (
       categoryId &&
-      !["all", "men", "women", "accessories"].includes(categoryId)
+      !["all", "men", "women", "electronics", "kids"].includes(categoryId)
     ) {
       query = query.eq("category_id", categoryId);
     }

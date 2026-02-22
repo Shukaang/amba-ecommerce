@@ -34,7 +34,7 @@ export default function FeaturedProducts() {
   const fetchProducts = async (tab: typeof activeTab) => {
     setLoading(true);
     try {
-      let url = "/api/products?limit=8";
+      let url = "/api/products?limit=10";
       if (tab === "featured") url += "&featured=true";
       if (tab === "new") url += "&sort=newest";
       if (tab === "trending") url += "&sort=trending";
@@ -129,10 +129,9 @@ export default function FeaturedProducts() {
                 key={i}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm"
               >
-                <Skeleton className="aspect-[3/4] w-full" />
+                <Skeleton className="aspect-[4/4] w-full" />
                 <div className="p-6 space-y-4">
                   <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-6 w-full" />
                   <Skeleton className="h-4 w-full" />
                   <div className="flex justify-between">
                     <Skeleton className="h-8 w-24" />

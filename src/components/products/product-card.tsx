@@ -29,12 +29,10 @@ interface Product {
 
 interface PremiumProductCardProps {
   product: Product;
-  showQuickView?: boolean;
 }
 
 export default function PremiumProductCard({
   product,
-  showQuickView = true,
 }: PremiumProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -170,12 +168,6 @@ export default function PremiumProductCard({
     toast.success(
       isWishlisted ? "Removed from wishlist" : "Added to wishlist!",
     );
-  };
-
-  const handleQuickView = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toast.info("Quick view coming soon!");
   };
 
   return (
