@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/supabaseServer";
 import ProductCard from "@/components/products/product-card";
-import ProductFilters from "@/components/products/product-filters";
-import SubcategoryFilter from "@/components/products/subcategory-filter";
+import CategoryMenu from "@/components/products/category-menu";
 import { Suspense } from "react";
 
 function getAllDescendantIds(
@@ -29,50 +28,28 @@ function ProductsLoading() {
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    minPrice?: string;
-    maxPrice?: string;
-    category?: string;
-    categories?: string;
-    subcategory?: string;
-    minRating?: string;
-    new?: string;
-    search?: string;
-  }>;
+  searchParams: Promise<{ category?: string; search?: string; new?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
 
-  // 1. Fetch all categories
+  // 1. Fetch all categories with parent_id
   const { data: allCategories } = await supabase
     .from("categories")
     .select("id, title, parent_id");
 
-  // Build maps
+  // Build category maps
   const categoryChildrenMap = new Map<string, string[]>();
-  const childToParentMap = new Map<string, string>();
-  const parentCategories: { id: string; title: string }[] = [];
-  const subcategoriesByParent: Record<string, { id: string; title: string }[]> =
-    {};
-
+  const allCategoriesById = new Map<
+    string,
+    { id: string; title: string; parent_id: string | null }
+  >();
   allCategories?.forEach((cat) => {
+    allCategoriesById.set(cat.id, cat);
     if (cat.parent_id) {
-      // child
       const children = categoryChildrenMap.get(cat.parent_id) || [];
       children.push(cat.id);
       categoryChildrenMap.set(cat.parent_id, children);
-      childToParentMap.set(cat.id, cat.parent_id);
-
-      if (!subcategoriesByParent[cat.parent_id]) {
-        subcategoriesByParent[cat.parent_id] = [];
-      }
-      subcategoriesByParent[cat.parent_id].push({
-        id: cat.id,
-        title: cat.title,
-      });
-    } else {
-      // parent
-      parentCategories.push({ id: cat.id, title: cat.title });
     }
   });
 
@@ -97,47 +74,18 @@ export default async function ProductsPage({
     return total;
   };
 
-  const parentCategoryCounts: Record<string, number> = {};
-  parentCategories.forEach((parent) => {
-    parentCategoryCounts[parent.id] = getTotalCount(parent.id);
+  const categoryCounts: Record<string, number> = {};
+  allCategories?.forEach((cat) => {
+    categoryCounts[cat.id] = getTotalCount(cat.id);
   });
 
-  // 3. Determine category IDs to filter and the parent for subcategory filter
+  // 3. Determine category IDs to filter
   let categoryIdsToFilter: string[] = [];
-  let selectedParentId: string | null = null;
-
-  if (params.subcategory) {
-    // Filter by this subcategory only
-    categoryIdsToFilter = [params.subcategory];
-    // Find its parent to show the subcategory filter row
-    selectedParentId = childToParentMap.get(params.subcategory) || null;
-  } else if (params.category) {
-    // Single parent from header
-    selectedParentId = params.category;
+  if (params.category) {
     categoryIdsToFilter = [
       params.category,
       ...getAllDescendantIds(params.category, categoryChildrenMap),
     ];
-  } else if (params.categories) {
-    const selected = params.categories.split(",");
-    if (
-      selected.length === 1 &&
-      parentCategories.some((p) => p.id === selected[0])
-    ) {
-      // Single parent selected via filter sidebar
-      selectedParentId = selected[0];
-      categoryIdsToFilter = [
-        selected[0],
-        ...getAllDescendantIds(selected[0], categoryChildrenMap),
-      ];
-    } else {
-      // Multiple categories or non-parents – expand each
-      const expanded = selected.flatMap((id) => [
-        id,
-        ...getAllDescendantIds(id, categoryChildrenMap),
-      ]);
-      categoryIdsToFilter = [...new Set(expanded)];
-    }
   }
 
   // 4. Build product query
@@ -162,17 +110,8 @@ export default async function ProductsPage({
   if (params.search) {
     query = query.ilike("title", `%${params.search}%`);
   }
-  if (params.minPrice) {
-    query = query.gte("price", parseFloat(params.minPrice));
-  }
-  if (params.maxPrice) {
-    query = query.lte("price", parseFloat(params.maxPrice));
-  }
   if (categoryIdsToFilter.length > 0) {
     query = query.in("category_id", categoryIdsToFilter);
-  }
-  if (params.minRating) {
-    query = query.gte("average_rating", parseFloat(params.minRating));
   }
 
   const { data: products, error } = await query.limit(50);
@@ -197,7 +136,7 @@ export default async function ProductsPage({
     .select("*", { count: "exact", head: true });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container bg-white mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Our Products</h1>
         <p className="text-gray-600">
@@ -206,42 +145,28 @@ export default async function ProductsPage({
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
+        {/* Category Menu - replaces old filters */}
         <div className="lg:w-1/4">
-          <ProductFilters
-            categories={parentCategories}
-            categoryCounts={parentCategoryCounts}
-            totalProducts={totalProducts || 0}
+          <CategoryMenu
+            allCategories={allCategories || []}
+            categoryCounts={categoryCounts}
+            selectedCategoryId={params.category || null}
           />
         </div>
 
         <div className="lg:w-3/4">
-          {/* Subcategory Filter – show if we have a parent with children */}
-          {selectedParentId &&
-            subcategoriesByParent[selectedParentId]?.length > 0 && (
-              <SubcategoryFilter
-                subcategories={subcategoriesByParent[selectedParentId]}
-                selectedSubcategory={params.subcategory}
-              />
-            )}
-
           <Suspense fallback={<ProductsLoading />}>
             {productsWithAvgRating && productsWithAvgRating.length > 0 ? (
               <>
-                {(params.minPrice ||
-                  params.maxPrice ||
-                  categoryIdsToFilter.length > 0 ||
-                  params.minRating ||
-                  params.new ||
-                  params.search) && (
+                {params.category && (
                   <div className="mb-6">
                     <p className="text-sm text-gray-600">
-                      Showing {productsWithAvgRating.length} products matching
-                      your filters
+                      Showing {productsWithAvgRating.length} products
                     </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                   {productsWithAvgRating.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -251,12 +176,7 @@ export default async function ProductsPage({
               <div className="text-center py-12">
                 <div className="text-gray-500 text-lg">No products found</div>
                 <p className="text-gray-500 mt-2">
-                  {params.minPrice ||
-                  params.maxPrice ||
-                  categoryIdsToFilter.length > 0 ||
-                  params.minRating ||
-                  params.new ||
-                  params.search
+                  {params.category || params.search || params.new
                     ? "Try changing your filters"
                     : "Check back later for new products"}
                 </p>

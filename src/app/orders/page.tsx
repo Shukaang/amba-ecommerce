@@ -45,7 +45,7 @@ interface Order {
   id: string;
   order_number: string | null;
   total_price: number;
-  status: string;
+  status: string; // actual DB status: PENDING, CONFIRMED, SHIPPED, READY, COMPLETED, CANCELED, FAILED
   shipping_info: string;
   created_at: string;
   updated_at: string;
@@ -62,6 +62,57 @@ export default function UserOrdersPage() {
   const supabase = createBrowserSupabaseClient();
 
   const isLoading = authLoading || ordersLoading;
+
+  // Map actual status to display status
+  const getDisplayStatus = (status: string): string => {
+    switch (status) {
+      case "PENDING":
+        return "PENDING";
+      case "CONFIRMED":
+      case "SHIPPED":
+      case "READY":
+        return "CONFIRMED";
+      case "COMPLETED":
+        return "COMPLETED";
+      case "CANCELED":
+      case "FAILED":
+        return "CANCELED";
+      default:
+        return status;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    const display = getDisplayStatus(status);
+    switch (display) {
+      case "COMPLETED":
+        return <CheckCircle className="h-5 w-5 text-emerald-600" />;
+      case "CONFIRMED":
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case "PENDING":
+        return <Clock className="h-5 w-5 text-yellow-600" />;
+      case "CANCELED":
+        return <XCircle className="h-5 w-5 text-red-600" />;
+      default:
+        return <Package className="h-5 w-5 text-gray-600" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const display = getDisplayStatus(status);
+    switch (display) {
+      case "COMPLETED":
+        return "bg-gray-200 text-gray-800 border-gray-200";
+      case "CONFIRMED":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "CANCELED":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
 
   const fetchOrders = async () => {
     if (!user) return;
@@ -122,40 +173,6 @@ export default function UserOrdersPage() {
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return <CheckCircle className="h-5 w-5 text-emerald-600" />;
-      case "SHIPPED":
-        return <Truck className="h-5 w-5 text-blue-600" />;
-      case "CONFIRMED":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case "PENDING":
-        return <Clock className="h-5 w-5 text-yellow-600" />;
-      case "CANCELED":
-        return <XCircle className="h-5 w-5 text-red-600" />;
-      default:
-        return <Package className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
-      case "SHIPPED":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "CONFIRMED":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "CANCELED":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -243,6 +260,7 @@ export default function UserOrdersPage() {
           <div className="space-y-6">
             {orders.map((order) => {
               const shipping = parseShippingInfo(order.shipping_info);
+              const displayStatus = getDisplayStatus(order.status);
               return (
                 <Card
                   key={order.id}
@@ -268,7 +286,7 @@ export default function UserOrdersPage() {
                             <Badge
                               className={`${getStatusColor(order.status)} border`}
                             >
-                              {order.status}
+                              {displayStatus}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-4 text-sm text-gray-500">

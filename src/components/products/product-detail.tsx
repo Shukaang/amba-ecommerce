@@ -232,7 +232,6 @@ export default function ProductDetailClient({
   const handleAddToCart = async () => {
     if (!user) {
       toast.error("Please login to add items to cart");
-      router.push("/login");
       return;
     }
 
@@ -292,7 +291,7 @@ export default function ProductDetailClient({
       await fetchRatings();
       setSelectedRating(0);
       setReviewText("");
-      toast.success("Review submitted! It will appear after moderation.");
+      toast.success("Review submitted! Thank you.");
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -323,7 +322,7 @@ export default function ProductDetailClient({
       setEditingRating(null);
       setSelectedRating(0);
       setReviewText("");
-      toast.success("Review updated! It will be re-moderated.");
+      toast.success("Review updated! Thank you.");
     } catch (error: any) {
       toast.error(error.message);
     } finally {

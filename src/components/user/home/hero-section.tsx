@@ -26,7 +26,7 @@ export default function HeroSection() {
         "Discover pieces that transcend seasons. Crafted for the modern connoisseur.",
       image: "/hero-image.jpg",
       cta: "View Lookbook",
-      link: "/lookbook",
+      link: "/products",
     },
     {
       title: "Ambastore Premium",
@@ -36,7 +36,7 @@ export default function HeroSection() {
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
       cta: "View Lookbook",
-      link: "/lookbook",
+      link: "/products",
     },
   ];
 
