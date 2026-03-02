@@ -934,7 +934,7 @@ export default function ProductDetailClient({
               {recommended.map((rec) => (
                 <Link
                   key={rec.id}
-                  href={`/products/${rec.slug}`}
+                  href={`/products/${product.slug}`}
                   className="group"
                 >
                   <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all h-full">
