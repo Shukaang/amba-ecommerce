@@ -567,7 +567,7 @@ export default function ProductDetailClient({
                 <h3 className="text-sm font-medium text-gray-900 mb-3">
                   Available Variants
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {product.product_variants.map((variant) => {
                     const isSelected = selectedVariant?.id === variant.id;
                     const variantName = [
@@ -581,13 +581,13 @@ export default function ProductDetailClient({
                       <button
                         key={variant.id}
                         onClick={() => setSelectedVariant(variant)}
-                        className={`p-4 border-2 rounded-xl text-left transition-all ${
+                        className={`p-1 border-2 rounded-xl text-left transition-all ${
                           isSelected
                             ? "border-[#f73a00] bg-orange-50"
                             : "border-gray-200 hover:border-orange-200"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-baseline justify-between">
                           <div>
                             <div className="font-medium text-gray-900">
                               {variantName || "Standard"}
