@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 
 interface Product {
   id: string;
+  slug: string;
   title: string;
   description: string;
   price: number;
@@ -171,7 +172,7 @@ export default function PremiumProductCard({
   };
 
   return (
-    <Link href={`/products/${product.id}`}>
+    <Link href={`/products/${product.slug}`}>
       <div
         className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer flex flex-col h-full"
         onMouseEnter={() => setIsHovered(true)}

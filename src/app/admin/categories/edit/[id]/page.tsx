@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Category {
@@ -47,12 +47,24 @@ export default function EditCategoryPage() {
     title: "",
     description: "",
     parent_id: "",
-    image: "",
   });
+
+  // Image state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImage, setExistingImage] = useState<string | null>(null);
+  const [keepCurrentImage, setKeepCurrentImage] = useState(true); // track if we keep existing
 
   useEffect(() => {
     fetchData();
   }, [categoryId]);
+
+  // Clean up preview URL
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const fetchData = async () => {
     try {
@@ -66,13 +78,10 @@ export default function EditCategoryPage() {
       const categoryData = await categoryRes.json();
 
       if (categoriesRes.ok) {
-        // Filter out current category and its descendants to prevent circular references
         const filteredCategories = categoriesData.categories.filter(
           (cat: Category) => cat.id !== categoryId,
         );
         setCategories(filteredCategories);
-
-        // Build options with indentation from filtered categories
         const options = buildCategoryOptions(filteredCategories);
         setParentOptions(options);
       }
@@ -83,8 +92,10 @@ export default function EditCategoryPage() {
           title: categoryData.category.title,
           description: categoryData.category.description || "",
           parent_id: categoryData.category.parent_id || "",
-          image: categoryData.category.image || "",
         });
+        if (categoryData.category.image) {
+          setExistingImage(categoryData.category.image);
+        }
       } else {
         toast.error("Category not found");
         router.push("/admin/categories");
@@ -121,18 +132,48 @@ export default function EditCategoryPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    // If there was an existing image, we'll replace it
+    setKeepCurrentImage(false);
+    // Clear existing image display
+    setExistingImage(null);
+  };
+
+  const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImageFile(null);
+      setImagePreview(null);
+    }
+    if (existingImage) {
+      setExistingImage(null);
+    }
+    setKeepCurrentImage(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("parent_id", formData.parent_id || "null");
+      formDataToSend.append(
+        "keepCurrentImage",
+        keepCurrentImage ? "true" : "false",
+      );
+      if (imageFile) formDataToSend.append("image", imageFile);
+
       const res = await fetch(`/api/categories/${categoryId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          parent_id: formData.parent_id === "null" ? null : formData.parent_id,
-        }),
+        body: formDataToSend,
       });
 
       const data = await res.json();
@@ -258,16 +299,58 @@ export default function EditCategoryPage() {
                 </Select>
               </div>
 
+              {/* Image upload */}
               <div className="space-y-2">
-                <Label htmlFor="image">Image URL</Label>
-                <Input
-                  id="image"
-                  name="image"
-                  type="url"
-                  value={formData.image}
-                  onChange={handleChange}
-                  placeholder="https://example.com/image.jpg"
-                />
+                <Label htmlFor="image">Category Image (optional)</Label>
+                <div className="flex items-center gap-4">
+                  {existingImage && !imagePreview && (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <img
+                        src={existingImage}
+                        alt="Current category"
+                        className="object-cover fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {imagePreview && (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="New preview"
+                        className="object-cover fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {!existingImage && !imagePreview && (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Supported formats: JPEG, PNG, GIF
+                </p>
               </div>
             </div>
 

@@ -1,60 +1,58 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/supabaseServer";
-import { withAdminAuth } from "@/lib/auth/middleware";
-import { slugify } from "@/lib/utils/slug";
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/supabaseServer';
+import { withAdminAuth } from '@/lib/auth/middleware';
+import { generateUniqueSlug } from '@/lib/utils/slug';
+import { uploadProductImage } from '@/lib/supabase/storage';
+import { verifyAuth } from '@/lib/auth/middleware';
 
-
+// Public GET – list products (only approved) with optional filtering
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get("category");
-    const search = searchParams.get("search");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const featured = searchParams.get("featured") === "true";
-    const sort = searchParams.get("sort") || "newest";
-    const isNew = searchParams.get("new") === "true";
+    const categoryId = searchParams.get('category');
+    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const featured = searchParams.get('featured') === 'true';
+    const sort = searchParams.get('sort') || 'newest';
+    const isNew = searchParams.get('new') === 'true';
 
     const supabase = await createAdminClient();
 
     let query = supabase
-      .from("products")
+      .from('products')
       .select(
         `
         *,
         categories(title),
         product_variants(*)
       `,
-        { count: "exact" }
-      );
+        { count: 'exact' }
+      )
+      .eq('status', 'approved');
 
     if (isNew) {
       const twoWeeksAgo = new Date();
       twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-      query = query.gte("created_at", twoWeeksAgo.toISOString());
+      query = query.gte('created_at', twoWeeksAgo.toISOString());
     }
 
-    if (
-      categoryId &&
-      !["all", "men", "women", "electronics", "kids"].includes(categoryId)
-    ) {
-      query = query.eq("category_id", categoryId);
+    if (categoryId && !['all', 'men', 'women', 'electronics', 'kids'].includes(categoryId)) {
+      query = query.eq('category_id', categoryId);
     }
 
     if (search) {
-      query = query.or(
-        `title.ilike.%${search}%,description.ilike.%${search}%`
-      );
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     if (featured) {
-      query = query.gte("average_rating", 4.0);
+      query = query.gte('average_rating', 4.0);
     }
 
-    if (sort === "newest") {
-      query = query.order("created_at", { ascending: false });
-    } else if (sort === "trending") {
-      query = query.order("average_rating", { ascending: false });
+    if (sort === 'newest') {
+      query = query.order('created_at', { ascending: false });
+    } else if (sort === 'trending') {
+      query = query.order('average_rating', { ascending: false });
     }
 
     const from = (page - 1) * limit;
@@ -72,71 +70,112 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch products" },
+      { error: error.message || 'Failed to fetch products' },
       { status: 500 }
     );
   }
 }
 
-
 async function createProduct(request: NextRequest) {
   try {
-    const body = await request.json();
-    const supabase = await createAdminClient();
-
-    let slug = slugify(body.title);
-
-    const { data: existing } = await supabase
-      .from("products")
-      .select("slug")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (existing) {
-      slug = `${slug}-${Date.now()}`;
+    // Get current user
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
+    const formData = await request.formData();
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const category_id = formData.get('category_id') as string;
+    const price = parseFloat(formData.get('price') as string);
+    const variantsJson = formData.get('variants') as string | null;
+    const imageFiles = formData.getAll('images') as File[];
+
+    if (!title || !description || isNaN(price)) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createAdminClient();
+
+    // Generate unique slug
+    const slug = await generateUniqueSlug(title, supabase);
+
+    // Insert product with created_by and updated_by
     const { data: product, error: productError } = await supabase
-      .from("products")
+      .from('products')
       .insert({
-        title: body.title,
+        title,
         slug,
-        description: body.description,
-        category_id: body.category_id || null,
-        price: body.price,
-        images: body.images || [],
+        description,
+        category_id: category_id === 'null' ? null : category_id,
+        price,
+        images: [],
+        status: 'pending',
+        created_by: user.id,
+        updated_by: user.id,
       })
       .select()
       .single();
 
     if (productError) throw productError;
 
-    if (body.variants?.length > 0) {
-      const variantData = body.variants.map((variant: any) => ({
-        product_id: product.id,
-        color: variant.color || null,
-        size: variant.size || null,
-        unit: variant.unit || null,
-        price: variant.price || body.price,
-      }));
-
-      const { error: variantsError } = await supabase
-        .from("product_variants")
-        .insert(variantData);
-
-      if (variantsError) throw variantsError;
+    // Upload images
+    const imageUrls: string[] = [];
+    for (const file of imageFiles) {
+      try {
+        const url = await uploadProductImage(product.id, file);
+        imageUrls.push(url);
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError);
+      }
     }
 
+    // Update product with image URLs
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ images: imageUrls })
+      .eq('id', product.id);
+
+    if (updateError) throw updateError;
+
+    // Handle variants
+    if (variantsJson) {
+      const variants = JSON.parse(variantsJson);
+      if (variants.length > 0) {
+        const variantData = variants.map((v: any) => ({
+          product_id: product.id,
+          color: v.color,
+          size: v.size,
+          unit: v.unit,
+          price: v.price,
+        }));
+        const { error: variantsError } = await supabase
+          .from('product_variants')
+          .insert(variantData);
+        if (variantsError) throw variantsError;
+      }
+    }
+
+    // Fetch complete product with creator and updater info
     const { data: completeProduct, error: fetchError } = await supabase
-      .from("products")
+      .from('products')
       .select(
         `
         *,
         categories(title),
-        product_variants(*)
+        product_variants(*),
+        creator:users!products_created_by_fkey(id, name, email),
+        updater:users!products_updated_by_fkey(id, name, email)
       `
       )
-      .eq("id", product.id)
+      .eq('id', product.id)
       .single();
 
     if (fetchError) throw fetchError;
@@ -144,17 +183,17 @@ async function createProduct(request: NextRequest) {
     return NextResponse.json(
       {
         product: completeProduct,
-        message: "Product created successfully",
+        message: 'Product created successfully (pending approval)',
       },
       { status: 201 }
     );
   } catch (error: any) {
+    console.error('Create product error:', error);
     return NextResponse.json(
-      { error: error.message || "Failed to create product" },
+      { error: error.message || 'Failed to create product' },
       { status: 500 }
     );
   }
 }
 
-/* 🔥 Correct Next.js export */
 export const POST = withAdminAuth(createProduct);

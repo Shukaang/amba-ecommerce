@@ -15,6 +15,17 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/supabaseClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface User {
   id: string;
@@ -31,8 +42,9 @@ interface UsersTableProps {
   users: User[];
 }
 
-export default function UsersTable({ users }: UsersTableProps) {
+export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -41,15 +53,53 @@ export default function UsersTable({ users }: UsersTableProps) {
     role: "SUPERADMIN" | "ADMIN" | "CUSTOMER";
     status: "ACTIVE" | "INACTIVE" | "BANNED";
   } | null>(null);
-  const [localUsers, setLocalUsers] = useState<User[]>(users);
   const [loading, setLoading] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const supabase = createClient();
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
+    }
+  };
 
   useEffect(() => {
-    setLocalUsers(users);
-  }, [users]);
+    const channel = supabase
+      .channel("users-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        fetchUsers,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const isSuperAdmin = currentUser?.role === "SUPERADMIN";
   const isAdmin = currentUser?.role === "ADMIN" || isSuperAdmin;
+
+  // Filter users based on current user's role
+  const visibleUsers = users.filter((user) => {
+    if (isSuperAdmin) return true; // SUPERADMIN sees all
+    // ADMIN sees only ADMIN and CUSTOMER
+    return user.role !== "SUPERADMIN";
+  });
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -99,7 +149,7 @@ export default function UsersTable({ users }: UsersTableProps) {
     }
   };
 
-  const filteredUsers = localUsers.filter((user) => {
+  const filteredUsers = visibleUsers.filter((user) => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -148,17 +198,10 @@ export default function UsersTable({ users }: UsersTableProps) {
         throw new Error(data.error || "Failed to update user");
       }
 
-      setLocalUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? { ...user, role: editData.role, status: editData.status }
-            : user,
-        ),
-      );
-
       toast.success("User updated successfully");
       setEditingUser(null);
       setEditData(null);
+      await fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to update user");
     } finally {
@@ -166,21 +209,17 @@ export default function UsersTable({ users }: UsersTableProps) {
     }
   };
 
-  const handleDelete = async (userId: string, userName: string) => {
-    if (!isSuperAdmin) return;
+  const handleDeleteClick = (userId: string, userName: string) => {
+    setDeleteDialog({ id: userId, name: userName });
+  };
 
-    if (
-      !confirm(
-        `Are you sure you want to permanently delete user "${userName}"? This action cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deleteDialog || !isSuperAdmin) return;
 
-    setLoading(`delete-${userId}`);
+    setLoading(`delete-${deleteDialog.id}`);
 
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${deleteDialog.id}`, {
         method: "DELETE",
       });
 
@@ -190,262 +229,299 @@ export default function UsersTable({ users }: UsersTableProps) {
         throw new Error(data.error || "Failed to delete user");
       }
 
-      setLocalUsers((prev) => prev.filter((user) => user.id !== userId));
       toast.success("User deleted successfully");
+      await fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete user");
     } finally {
       setLoading(null);
+      setDeleteDialog(null);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-      {/* Filters */}
-      <div className="p-4 border-b">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1 max-w-lg">
-            <input
-              type="search"
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center space-x-4">
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Roles</option>
-              <option value="CUSTOMER">Customer</option>
-              {isAdmin && <option value="ADMIN">Admin</option>}
-              {isSuperAdmin && <option value="SUPERADMIN">Super Admin</option>}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="BANNED">Banned</option>
-            </select>
-          </div>
-        </div>
-        {isSuperAdmin && (
-          <div className="mt-2 flex items-center text-xs text-blue-600">
-            <Shield className="h-3 w-3 mr-1" />
-            <span>SUPERADMIN privileges enabled</span>
-          </div>
-        )}
-      </div>
-
-      {/* Users Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              {/* Only show Actions column header for SUPERADMIN */}
-              {isSuperAdmin && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="ml-3">
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.name}
-                        {currentUser?.id === user.id && (
-                          <span className="ml-2 text-xs text-blue-600">
-                            (You)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                      {user.email}
-                    </div>
-                    {user.phone && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        {user.phone}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  {editingUser === user.id && isSuperAdmin ? (
-                    <select
-                      value={editData?.role || user.role}
-                      onChange={(e) =>
-                        setEditData((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                role: e.target.value as
-                                  | "SUPERADMIN"
-                                  | "ADMIN"
-                                  | "CUSTOMER",
-                              }
-                            : null,
-                        )
-                      }
-                      className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      disabled={loading === `save-${user.id}`}
-                    >
-                      <option value="CUSTOMER">Customer</option>
-                      {isAdmin && <option value="ADMIN">Admin</option>}
-                      {isSuperAdmin && (
-                        <option value="SUPERADMIN">Super Admin</option>
-                      )}
-                    </select>
-                  ) : (
-                    <div className="flex items-center">
-                      {getRoleIcon(user.role)}
-                      <span
-                        className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}
-                      >
-                        {user.role}
-                      </span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  {editingUser === user.id && isSuperAdmin ? (
-                    <select
-                      value={editData?.status || user.status}
-                      onChange={(e) =>
-                        setEditData((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                status: e.target.value as
-                                  | "ACTIVE"
-                                  | "INACTIVE"
-                                  | "BANNED",
-                              }
-                            : null,
-                        )
-                      }
-                      className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      disabled={loading === `save-${user.id}`}
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                      <option value="BANNED">Banned</option>
-                    </select>
-                  ) : (
-                    <div className="flex items-center">
-                      {getStatusIcon(user.status)}
-                      <span
-                        className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}
-                      >
-                        {user.status}
-                      </span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </td>
-                {/* Only show Actions column for SUPERADMIN */}
+    <>
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        {/* Filters */}
+        <div className="p-4 border-b">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1 max-w-lg">
+              <input
+                type="search"
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center space-x-4">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Roles</option>
+                <option value="CUSTOMER">Customer</option>
+                {isAdmin && <option value="ADMIN">Admin</option>}
                 {isSuperAdmin && (
-                  <td className="px-6 py-4 text-sm font-medium">
-                    {editingUser === user.id ? (
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleSaveEdit(user.id)}
-                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
-                          disabled={loading === `save-${user.id}`}
-                        >
-                          {loading === `save-${user.id}` ? (
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></span>
-                          ) : (
-                            <Save className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                  <option value="SUPERADMIN">Super Admin</option>
+                )}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="BANNED">Banned</option>
+              </select>
+            </div>
+          </div>
+          {isSuperAdmin && (
+            <div className="mt-2 flex items-center text-xs text-blue-600">
+              <Shield className="h-3 w-3 mr-1" />
+              <span>SUPERADMIN privileges enabled</span>
+            </div>
+          )}
+        </div>
+
+        {/* Users Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  User
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                {isSuperAdmin && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <User className="h-4 w-4 text-gray-600" />
                       </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        {currentUser?.id !== user.id && (
-                          <>
-                            <button
-                              onClick={() => handleEditClick(user)}
-                              className="text-blue-600 hover:text-blue-900"
-                              disabled={!!loading}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(user.id, user.name)}
-                              className="text-red-600 hover:text-red-900"
-                              disabled={loading === `delete-${user.id}`}
-                            >
-                              {loading === `delete-${user.id}` ? (
-                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></span>
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
-                          </>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {user.name}
+                          {currentUser?.id === user.id && (
+                            <span className="ml-2 text-xs text-blue-600">
+                              (You)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                        {user.email}
+                      </div>
+                      {user.phone && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          {user.phone}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {editingUser === user.id && isSuperAdmin ? (
+                      <select
+                        value={editData?.role || user.role}
+                        onChange={(e) =>
+                          setEditData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  role: e.target.value as
+                                    | "SUPERADMIN"
+                                    | "ADMIN"
+                                    | "CUSTOMER",
+                                }
+                              : null,
+                          )
+                        }
+                        className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={loading === `save-${user.id}`}
+                      >
+                        <option value="CUSTOMER">Customer</option>
+                        {isAdmin && <option value="ADMIN">Admin</option>}
+                        {isSuperAdmin && (
+                          <option value="SUPERADMIN">Super Admin</option>
                         )}
+                      </select>
+                    ) : (
+                      <div className="flex items-center">
+                        {getRoleIcon(user.role)}
+                        <span
+                          className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}
+                        >
+                          {user.role}
+                        </span>
                       </div>
                     )}
                   </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredUsers.length === 0 && (
-          <div className="p-8 text-center">
-            <div className="text-gray-400 mb-2">No users found</div>
-            <p className="text-sm text-gray-500">
-              {searchQuery || roleFilter !== "all" || statusFilter !== "all"
-                ? "Try changing your filters"
-                : "No users in the system yet"}
-            </p>
-          </div>
-        )}
+                  <td className="px-6 py-4">
+                    {editingUser === user.id && isSuperAdmin ? (
+                      <select
+                        value={editData?.status || user.status}
+                        onChange={(e) =>
+                          setEditData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  status: e.target.value as
+                                    | "ACTIVE"
+                                    | "INACTIVE"
+                                    | "BANNED",
+                                }
+                              : null,
+                          )
+                        }
+                        className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        disabled={loading === `save-${user.id}`}
+                      >
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="BANNED">Banned</option>
+                      </select>
+                    ) : (
+                      <div className="flex items-center">
+                        {getStatusIcon(user.status)}
+                        <span
+                          className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}
+                        >
+                          {user.status}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </td>
+                  {isSuperAdmin && (
+                    <td className="px-6 py-4 text-sm font-medium">
+                      {editingUser === user.id ? (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleSaveEdit(user.id)}
+                            className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                            disabled={loading === `save-${user.id}`}
+                          >
+                            {loading === `save-${user.id}` ? (
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></span>
+                            ) : (
+                              <Save className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          {currentUser?.id !== user.id && (
+                            <>
+                              <button
+                                onClick={() => handleEditClick(user)}
+                                className="text-blue-600 hover:text-blue-900"
+                                disabled={!!loading}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteClick(user.id, user.name)
+                                }
+                                className="text-red-600 hover:text-red-900"
+                                disabled={loading === `delete-${user.id}`}
+                              >
+                                {loading === `delete-${user.id}` ? (
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></span>
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredUsers.length === 0 && (
+            <div className="p-8 text-center">
+              <div className="text-gray-400 mb-2">No users found</div>
+              <p className="text-sm text-gray-500">
+                {searchQuery || roleFilter !== "all" || statusFilter !== "all"
+                  ? "Try changing your filters"
+                  : "No users in the system yet"}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteDialog}
+        onOpenChange={() => setDeleteDialog(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteDialog?.name}"? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={loading === `delete-${deleteDialog?.id}`}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={loading === `delete-${deleteDialog?.id}`}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {loading === `delete-${deleteDialog?.id}`
+                ? "Deleting..."
+                : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

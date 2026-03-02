@@ -31,9 +31,12 @@ import {
   Tag,
   Ruler,
   Palette,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import Image from "next/image";
 
 interface Category {
   id: string;
@@ -63,15 +66,33 @@ export default function NewProductPage() {
     description: "",
     category_id: "",
     price: "",
-    images: [""],
   });
   const [variants, setVariants] = useState<ProductVariant[]>([
     { color: "", size: "", unit: "", price: "" },
   ]);
 
+  // Image states
+  const [mainImage, setMainImage] = useState<File | null>(null);
+  const [mainPreview, setMainPreview] = useState<string | null>(null);
+
+  const [secondaryImage, setSecondaryImage] = useState<File | null>(null);
+  const [secondaryPreview, setSecondaryPreview] = useState<string | null>(null);
+
+  const [additionalImages, setAdditionalImages] = useState<File[]>([]);
+  const [additionalPreviews, setAdditionalPreviews] = useState<string[]>([]);
+
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Clean up object URLs
+  useEffect(() => {
+    return () => {
+      if (mainPreview) URL.revokeObjectURL(mainPreview);
+      if (secondaryPreview) URL.revokeObjectURL(secondaryPreview);
+      additionalPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [mainPreview, secondaryPreview, additionalPreviews]);
 
   const fetchCategories = async () => {
     try {
@@ -79,7 +100,6 @@ export default function NewProductPage() {
       const data = await res.json();
       if (res.ok) {
         setCategories(data.categories);
-        // Build tree: separate roots and children
         const childrenMap = new Map<string, Category[]>();
         const roots: Category[] = [];
         data.categories.forEach((cat: Category) => {
@@ -92,7 +112,6 @@ export default function NewProductPage() {
             roots.push(cat);
           }
         });
-        // Sort roots and children alphabetically
         roots.sort((a, b) => a.title.localeCompare(b.title));
         const tree = roots.map((root) => ({
           root,
@@ -115,24 +134,53 @@ export default function NewProductPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...formData.images];
-    newImages[index] = value;
-    setFormData((prev) => ({ ...prev, images: newImages }));
+  // Image handlers
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (mainPreview) URL.revokeObjectURL(mainPreview);
+    setMainImage(file);
+    setMainPreview(URL.createObjectURL(file));
   };
 
-  const addImageField = () => {
-    setFormData((prev) => ({ ...prev, images: [...prev.images, ""] }));
+  const removeMainImage = () => {
+    if (mainPreview) URL.revokeObjectURL(mainPreview);
+    setMainImage(null);
+    setMainPreview(null);
   };
 
-  const removeImageField = (index: number) => {
-    if (formData.images.length > 1) {
-      const newImages = formData.images.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, images: newImages }));
-    }
+  const handleSecondaryImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (secondaryPreview) URL.revokeObjectURL(secondaryPreview);
+    setSecondaryImage(file);
+    setSecondaryPreview(URL.createObjectURL(file));
   };
 
-  // Variant handlers
+  const removeSecondaryImage = () => {
+    if (secondaryPreview) URL.revokeObjectURL(secondaryPreview);
+    setSecondaryImage(null);
+    setSecondaryPreview(null);
+  };
+
+  const handleAdditionalImagesChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files || []);
+    setAdditionalImages((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setAdditionalPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    setAdditionalImages((prev) => prev.filter((_, i) => i !== index));
+    URL.revokeObjectURL(additionalPreviews[index]);
+    setAdditionalPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Variant handlers (unchanged)
   const handleVariantChange = (
     index: number,
     field: keyof ProductVariant,
@@ -156,15 +204,11 @@ export default function NewProductPage() {
 
   const validateVariants = (): boolean => {
     if (!hasVariants) return true;
-
-    // Check if all variants have at least one attribute and price
     for (const variant of variants) {
       if (!variant.price.trim()) {
         toast.error("All variants must have a price");
         return false;
       }
-
-      // At least one of color, size, or unit should be filled
       if (
         !variant.color.trim() &&
         !variant.size.trim() &&
@@ -176,15 +220,12 @@ export default function NewProductPage() {
         return false;
       }
     }
-
-    // Check for duplicate variants
     const variantKeys = variants.map((v) => `${v.color}|${v.size}|${v.unit}`);
     const uniqueKeys = new Set(variantKeys);
     if (uniqueKeys.size !== variants.length) {
       toast.error("Duplicate variants detected");
       return false;
     }
-
     return true;
   };
 
@@ -193,45 +234,40 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
-      // Validate variants if enabled
       if (hasVariants && !validateVariants()) {
         setLoading(false);
         return;
       }
 
-      // Prepare product data
-      const productData = {
-        ...formData,
-        price: parseFloat(formData.price),
-        images: formData.images.filter((img) => img.trim() !== ""),
-        category_id:
-          formData.category_id === "null" ? null : formData.category_id,
-      };
+      const formDataToSend = new FormData();
 
-      // Prepare variants data
-      const variantsData = hasVariants
-        ? variants
-            .filter(
-              (variant) =>
-                variant.color.trim() ||
-                variant.size.trim() ||
-                variant.unit.trim(),
-            )
-            .map((variant) => ({
-              color: variant.color.trim() || null,
-              size: variant.size.trim() || null,
-              unit: variant.unit.trim() || null,
-              price: parseFloat(variant.price),
-            }))
-        : [];
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("category_id", formData.category_id || "null");
+      formDataToSend.append("price", formData.price);
+
+      if (hasVariants) {
+        const variantsData = variants
+          .filter((v) => v.color.trim() || v.size.trim() || v.unit.trim())
+          .map((v) => ({
+            color: v.color.trim() || null,
+            size: v.size.trim() || null,
+            unit: v.unit.trim() || null,
+            price: parseFloat(v.price),
+          }));
+        formDataToSend.append("variants", JSON.stringify(variantsData));
+      }
+
+      // Append images in desired order: main, secondary, then additional
+      if (mainImage) formDataToSend.append("images", mainImage);
+      if (secondaryImage) formDataToSend.append("images", secondaryImage);
+      additionalImages.forEach((file) => {
+        formDataToSend.append("images", file);
+      });
 
       const res = await fetch("/api/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...productData,
-          variants: variantsData,
-        }),
+        body: formDataToSend,
       });
 
       const data = await res.json();
@@ -265,6 +301,7 @@ export default function NewProductPage() {
             <CardDescription>Enter the product details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Product Title *</Label>
               <Input
@@ -277,6 +314,7 @@ export default function NewProductPage() {
               />
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description">Description *</Label>
               <Textarea
@@ -291,6 +329,7 @@ export default function NewProductPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category_id">Category</Label>
                 <Select
@@ -306,11 +345,9 @@ export default function NewProductPage() {
                     <SelectItem value="null">Uncategorized</SelectItem>
                     {categoryTree.map(({ root, children }) => (
                       <div key={root.id}>
-                        {/* Root category as selectable option */}
                         <SelectItem value={root.id} className="font-medium">
                           {root.title}
                         </SelectItem>
-                        {/* Children as indented options */}
                         {children.length > 0 && (
                           <SelectGroup>
                             <SelectLabel className="sr-only">
@@ -333,6 +370,7 @@ export default function NewProductPage() {
                 </Select>
               </div>
 
+              {/* Price */}
               <div className="space-y-2">
                 <Label htmlFor="price">
                   {hasVariants ? "Base Price (Br) *" : "Price (Br) *"}
@@ -374,16 +412,15 @@ export default function NewProductPage() {
                 checked={hasVariants}
                 onCheckedChange={(checked) => {
                   setHasVariants(checked);
-                  if (checked) {
-                    setShowVariants(true);
-                  }
+                  if (checked) setShowVariants(true);
                 }}
               />
             </div>
 
-            {/* Variants Section */}
+            {/* Variants Section (unchanged) */}
             {hasVariants && (
               <div className="border rounded-lg p-4 space-y-4">
+                {/* ... keep the same as before ... */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <button
@@ -399,15 +436,6 @@ export default function NewProductPage() {
                       Variants ({variants.length})
                     </button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addVariant}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Variant
-                  </Button>
                 </div>
 
                 {showVariants && (
@@ -432,8 +460,8 @@ export default function NewProductPage() {
                             </Button>
                           )}
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {/* color, size, unit, price inputs */}
                           <div className="space-y-2">
                             <Label
                               htmlFor={`color-${index}`}
@@ -455,7 +483,6 @@ export default function NewProductPage() {
                               placeholder="e.g., Red, Blue"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`size-${index}`}
@@ -477,7 +504,6 @@ export default function NewProductPage() {
                               placeholder="e.g., S, M, L, 10kg"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`unit-${index}`}
@@ -499,7 +525,6 @@ export default function NewProductPage() {
                               placeholder="e.g., Pack, Box, Piece"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`price-${index}`}
@@ -539,45 +564,137 @@ export default function NewProductPage() {
                     </div>
                   </div>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addVariant}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Variant
+                </Button>
               </div>
             )}
 
             {/* Product Images */}
-            <div className="space-y-2">
-              <Label>Product Images</Label>
-              <div className="space-y-3">
-                {formData.images.map((image, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Input
-                      value={image}
-                      onChange={(e) => handleImageChange(index, e.target.value)}
-                      placeholder={`Image URL ${index + 1}`}
-                      type="url"
-                    />
-                    {formData.images.length > 1 && (
-                      <Button
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium text-gray-900">
+                Product Images
+              </h3>
+
+              {/* Main Image */}
+              <div className="space-y-2">
+                <Label>Main Image (first)</Label>
+                <div className="flex items-center gap-4">
+                  {mainPreview ? (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <Image
+                        src={mainPreview}
+                        alt="Main preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
                         type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeImageField(index)}
+                        onClick={removeMainImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMainImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addImageField}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Another Image
-              </Button>
+
+              {/* Secondary Image */}
+              <div className="space-y-2">
+                <Label>Secondary Image (second)</Label>
+                <div className="flex items-center gap-4">
+                  {secondaryPreview ? (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <Image
+                        src={secondaryPreview}
+                        alt="Secondary preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeSecondaryImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSecondaryImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Images */}
+              <div className="space-y-2">
+                <Label>Additional Images (optional)</Label>
+                <div className="flex flex-wrap gap-4">
+                  {additionalPreviews.map((preview, idx) => (
+                    <div
+                      key={idx}
+                      className="relative w-24 h-24 border rounded-md overflow-hidden"
+                    >
+                      <Image
+                        src={preview}
+                        alt={`Additional ${idx}`}
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalImage(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <span className="text-xs text-gray-500">Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleAdditionalImagesChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500">
+                  You can upload multiple additional images.
+                </p>
+              </div>
             </div>
 
+            {/* Action buttons */}
             <div className="flex justify-end space-x-4 pt-6">
               <Button
                 type="button"

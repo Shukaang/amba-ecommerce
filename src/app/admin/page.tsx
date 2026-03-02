@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/supabaseServer";
-import AdminStats from "@/components/admin/stats";
+import AdminStatsClient from "@/components/admin/stats";
 import RecentOrders from "@/components/admin/recent-orders";
 import RecentProducts from "@/components/admin/recent-products";
 import UserActivity from "@/components/admin/user-activity";
@@ -78,12 +78,12 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <AdminStats
+        <AdminStatsClient
           totalOrders={ordersCount.count || 0}
           totalProducts={productsCount.count || 0}
           totalUsers={usersCount.count || 0}
           pendingOrders={pendingOrdersCount.count || 0}
-          superAdminCount={superAdminCount.count || 0} // PASS THIS PROP
+          superAdminCount={superAdminCount.count || 0}
         />
 
         {/* Grid Layout */}

@@ -3,17 +3,15 @@
 import { useState } from "react";
 import {
   Bell,
-  Search,
   User,
   LogOut,
   Settings,
-  Package,
   Home,
   ChevronDown,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -26,11 +24,14 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface AdminHeaderProps {
-  user?: any;
+  user?: any; // optional user from server (for initial load)
+  onMenuClick?: () => void; // callback for mobile menu button
 }
 
-export default function AdminHeader({ user: propUser }: AdminHeaderProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+export default function AdminHeader({
+  user: propUser,
+  onMenuClick,
+}: AdminHeaderProps) {
   const { user: authUser, logout, loading } = useAuth();
 
   // Use propUser if provided (from server), otherwise use authUser
@@ -40,7 +41,6 @@ export default function AdminHeader({ user: propUser }: AdminHeaderProps) {
     await logout();
   };
 
-  // Get user initials for avatar
   const getUserInitials = () => {
     if (!user?.name) return "A";
     return user.name
@@ -51,7 +51,6 @@ export default function AdminHeader({ user: propUser }: AdminHeaderProps) {
       .slice(0, 2);
   };
 
-  // Get role badge color
   const getRoleColor = (role: string) => {
     switch (role) {
       case "SUPERADMIN":
@@ -63,10 +62,9 @@ export default function AdminHeader({ user: propUser }: AdminHeaderProps) {
     }
   };
 
-  // Show loading state
   if (loading) {
     return (
-      <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800">
+      <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -78,30 +76,23 @@ export default function AdminHeader({ user: propUser }: AdminHeaderProps) {
     );
   }
 
-  if (!user) {
-    return null; // Don't show header if no user
-  }
+  if (!user) return null;
 
   return (
     <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* Left Section - Search */}
-          <div className="flex-1 max-w-lg">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-5 w-5" />
-              <Input
-                type="search"
-                placeholder="Search orders, products, users..."
-                className="pl-10 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
+          {/* Mobile menu button */}
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-800"
+            aria-label="Toggle menu"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
 
-          {/* Right Section */}
-          <div className="flex items-center space-x-4">
+          {/* Right section (moved from left) */}
+          <div className="flex items-center space-x-4 ml-auto">
             {/* Site Button */}
             <Link href="/" target="_blank">
               <Button

@@ -30,6 +30,8 @@ import {
   Tag,
   Ruler,
   Palette,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -77,15 +79,40 @@ export default function EditProductPage() {
     description: "",
     category_id: "",
     price: "",
-    images: [""],
   });
   const [variants, setVariants] = useState<ProductVariant[]>([
     { color: "", size: "", unit: "", price: "" },
   ]);
 
+  // Image states
+  const [mainImage, setMainImage] = useState<File | null>(null);
+  const [mainPreview, setMainPreview] = useState<string | null>(null);
+  const [mainExisting, setMainExisting] = useState<string | null>(null);
+
+  const [secondaryImage, setSecondaryImage] = useState<File | null>(null);
+  const [secondaryPreview, setSecondaryPreview] = useState<string | null>(null);
+  const [secondaryExisting, setSecondaryExisting] = useState<string | null>(
+    null,
+  );
+
+  const [additionalImages, setAdditionalImages] = useState<File[]>([]);
+  const [additionalPreviews, setAdditionalPreviews] = useState<string[]>([]);
+  const [additionalExisting, setAdditionalExisting] = useState<string[]>([]);
+
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+
   useEffect(() => {
     fetchData();
   }, [productId]);
+
+  // Clean up preview URLs
+  useEffect(() => {
+    return () => {
+      if (mainPreview) URL.revokeObjectURL(mainPreview);
+      if (secondaryPreview) URL.revokeObjectURL(secondaryPreview);
+      additionalPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [mainPreview, secondaryPreview, additionalPreviews]);
 
   const fetchData = async () => {
     try {
@@ -100,33 +127,36 @@ export default function EditProductPage() {
 
       if (categoriesRes.ok) {
         setCategories(categoriesData.categories);
-        // Build category options with indentation
         const options = buildCategoryOptions(categoriesData.categories);
         setCategoryOptions(options);
       }
 
       if (productRes.ok && productData.product) {
-        const product = productData.product;
-        setProduct(product);
-
+        const prod = productData.product;
+        setProduct(prod);
         setFormData({
-          title: product.title,
-          description: product.description,
-          category_id: product.category_id || "",
-          price: product.price.toString(),
-          images: product.images.length > 0 ? product.images : [""],
+          title: prod.title,
+          description: prod.description,
+          category_id: prod.category_id || "",
+          price: prod.price.toString(),
         });
 
-        if (product.product_variants && product.product_variants.length > 0) {
+        // Split images into main, secondary, additional
+        const images = prod.images || [];
+        if (images.length > 0) setMainExisting(images[0]);
+        if (images.length > 1) setSecondaryExisting(images[1]);
+        if (images.length > 2) setAdditionalExisting(images.slice(2));
+
+        if (prod.product_variants && prod.product_variants.length > 0) {
           setHasVariants(true);
           setShowVariants(true);
           setVariants(
-            product.product_variants.map((variant: any) => ({
-              id: variant.id,
-              color: variant.color || "",
-              size: variant.size || "",
-              unit: variant.unit || "",
-              price: variant.price.toString(),
+            prod.product_variants.map((v: any) => ({
+              id: v.id,
+              color: v.color || "",
+              size: v.size || "",
+              unit: v.unit || "",
+              price: v.price.toString(),
             })),
           );
         } else {
@@ -145,7 +175,6 @@ export default function EditProductPage() {
     }
   };
 
-  // Build flat list with depth for indentation
   const buildCategoryOptions = (
     cats: Category[],
     parentId: string | null = null,
@@ -170,24 +199,83 @@ export default function EditProductPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...formData.images];
-    newImages[index] = value;
-    setFormData((prev) => ({ ...prev, images: newImages }));
-  };
-
-  const addImageField = () => {
-    setFormData((prev) => ({ ...prev, images: [...prev.images, ""] }));
-  };
-
-  const removeImageField = (index: number) => {
-    if (formData.images.length > 1) {
-      const newImages = formData.images.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, images: newImages }));
+  // Image handlers
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (mainPreview) URL.revokeObjectURL(mainPreview);
+    setMainImage(file);
+    setMainPreview(URL.createObjectURL(file));
+    // If there was an existing main image, mark it for deletion
+    if (mainExisting) {
+      setImagesToDelete((prev) => [...prev, mainExisting]);
+      setMainExisting(null);
     }
   };
 
-  // Variant handlers
+  const removeMainImage = () => {
+    if (mainPreview) {
+      URL.revokeObjectURL(mainPreview);
+      setMainImage(null);
+      setMainPreview(null);
+    }
+    if (mainExisting) {
+      setImagesToDelete((prev) => [...prev, mainExisting]);
+      setMainExisting(null);
+    }
+  };
+
+  const handleSecondaryImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (secondaryPreview) URL.revokeObjectURL(secondaryPreview);
+    setSecondaryImage(file);
+    setSecondaryPreview(URL.createObjectURL(file));
+    if (secondaryExisting) {
+      setImagesToDelete((prev) => [...prev, secondaryExisting]);
+      setSecondaryExisting(null);
+    }
+  };
+
+  const removeSecondaryImage = () => {
+    if (secondaryPreview) {
+      URL.revokeObjectURL(secondaryPreview);
+      setSecondaryImage(null);
+      setSecondaryPreview(null);
+    }
+    if (secondaryExisting) {
+      setImagesToDelete((prev) => [...prev, secondaryExisting]);
+      setSecondaryExisting(null);
+    }
+  };
+
+  const handleAdditionalImagesChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files || []);
+    setAdditionalImages((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setAdditionalPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    // If it's an existing image, mark it for deletion
+    if (index < additionalExisting.length) {
+      const url = additionalExisting[index];
+      setImagesToDelete((prev) => [...prev, url]);
+      setAdditionalExisting((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      // It's a newly uploaded image
+      const newIndex = index - additionalExisting.length;
+      setAdditionalImages((prev) => prev.filter((_, i) => i !== newIndex));
+      URL.revokeObjectURL(additionalPreviews[index]);
+      setAdditionalPreviews((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // Variant handlers (same as before)
   const handleVariantChange = (
     index: number,
     field: keyof ProductVariant,
@@ -211,13 +299,11 @@ export default function EditProductPage() {
 
   const validateVariants = (): boolean => {
     if (!hasVariants) return true;
-
     for (const variant of variants) {
       if (!variant.price.trim()) {
         toast.error("All variants must have a price");
         return false;
       }
-
       if (
         !variant.color.trim() &&
         !variant.size.trim() &&
@@ -229,14 +315,12 @@ export default function EditProductPage() {
         return false;
       }
     }
-
     const variantKeys = variants.map((v) => `${v.color}|${v.size}|${v.unit}`);
     const uniqueKeys = new Set(variantKeys);
     if (uniqueKeys.size !== variants.length) {
       toast.error("Duplicate variants detected");
       return false;
     }
-
     return true;
   };
 
@@ -250,33 +334,44 @@ export default function EditProductPage() {
         return;
       }
 
-      const variantsData = hasVariants
-        ? variants
-            .filter(
-              (variant) =>
-                variant.color.trim() ||
-                variant.size.trim() ||
-                variant.unit.trim(),
-            )
-            .map((variant) => ({
-              color: variant.color.trim() || null,
-              size: variant.size.trim() || null,
-              unit: variant.unit.trim() || null,
-              price: parseFloat(variant.price) || parseFloat(formData.price),
-            }))
-        : [];
+      const formDataToSend = new FormData();
+
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("category_id", formData.category_id || "null");
+      formDataToSend.append("price", formData.price);
+      formDataToSend.append("imagesToDelete", JSON.stringify(imagesToDelete));
+
+      if (hasVariants) {
+        const variantsData = variants
+          .filter((v) => v.color.trim() || v.size.trim() || v.unit.trim())
+          .map((v) => ({
+            color: v.color.trim() || null,
+            size: v.size.trim() || null,
+            unit: v.unit.trim() || null,
+            price: parseFloat(v.price),
+          }));
+        formDataToSend.append("variants", JSON.stringify(variantsData));
+      }
+
+      // Build final images array: existing kept + new files in order
+      const keptImages: string[] = [];
+      if (mainExisting) keptImages.push(mainExisting);
+      if (secondaryExisting) keptImages.push(secondaryExisting);
+      keptImages.push(...additionalExisting);
+
+      formDataToSend.append("existingImages", JSON.stringify(keptImages));
+
+      // Append new files in the desired order: main, secondary, additional
+      if (mainImage) formDataToSend.append("newImages", mainImage);
+      if (secondaryImage) formDataToSend.append("newImages", secondaryImage);
+      additionalImages.forEach((file) => {
+        formDataToSend.append("newImages", file);
+      });
 
       const res = await fetch(`/api/products/${productId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          images: formData.images.filter((img) => img.trim() !== ""),
-          category_id:
-            formData.category_id === "null" ? null : formData.category_id,
-          variants: variantsData,
-        }),
+        body: formDataToSend,
       });
 
       const data = await res.json();
@@ -295,9 +390,7 @@ export default function EditProductPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this product?")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
       const res = await fetch(`/api/products/${productId}`, {
@@ -347,6 +440,7 @@ export default function EditProductPage() {
             <CardDescription>Update the product details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Title, Description, Category, Price (unchanged) */}
             <div className="space-y-2">
               <Label htmlFor="title">Product Title *</Label>
               <Input
@@ -422,7 +516,7 @@ export default function EditProductPage() {
               </div>
             </div>
 
-            {/* Variants Toggle */}
+            {/* Variants Toggle & Section (unchanged, same as in NewProductPage) */}
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
                 <Package className="h-5 w-5 text-gray-500" />
@@ -440,14 +534,11 @@ export default function EditProductPage() {
                 checked={hasVariants}
                 onCheckedChange={(checked) => {
                   setHasVariants(checked);
-                  if (checked) {
-                    setShowVariants(true);
-                  }
+                  if (checked) setShowVariants(true);
                 }}
               />
             </div>
 
-            {/* Variants Section */}
             {hasVariants && (
               <div className="border rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -465,15 +556,6 @@ export default function EditProductPage() {
                       Variants ({variants.length})
                     </button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addVariant}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Variant
-                  </Button>
                 </div>
 
                 {showVariants && (
@@ -498,7 +580,6 @@ export default function EditProductPage() {
                             </Button>
                           )}
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="space-y-2">
                             <Label
@@ -521,7 +602,6 @@ export default function EditProductPage() {
                               placeholder="e.g., Red, Blue"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`size-${index}`}
@@ -543,7 +623,6 @@ export default function EditProductPage() {
                               placeholder="e.g., S, M, L, 10kg"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`unit-${index}`}
@@ -565,7 +644,6 @@ export default function EditProductPage() {
                               placeholder="e.g., Pack, Box, Piece"
                             />
                           </div>
-
                           <div className="space-y-2">
                             <Label
                               htmlFor={`price-${index}`}
@@ -605,45 +683,156 @@ export default function EditProductPage() {
                     </div>
                   </div>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addVariant}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Variant
+                </Button>
               </div>
             )}
 
             {/* Product Images */}
-            <div className="space-y-2">
-              <Label>Product Images</Label>
-              <div className="space-y-3">
-                {formData.images.map((image, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Input
-                      value={image}
-                      onChange={(e) => handleImageChange(index, e.target.value)}
-                      placeholder={`Image URL ${index + 1}`}
-                      type="url"
-                    />
-                    {formData.images.length > 1 && (
-                      <Button
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium text-gray-900">
+                Product Images
+              </h3>
+
+              {/* Main Image */}
+              <div className="space-y-2">
+                <Label>Main Image (first)</Label>
+                <div className="flex items-center gap-4">
+                  {(mainPreview || mainExisting) && (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <img
+                        src={mainPreview || mainExisting || ""}
+                        alt="Main"
+                        className="object-cover fill"
+                      />
+                      <button
                         type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeImageField(index)}
+                        onClick={removeMainImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {!mainPreview && !mainExisting && (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMainImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addImageField}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Another Image
-              </Button>
+
+              {/* Secondary Image */}
+              <div className="space-y-2">
+                <Label>Secondary Image (second)</Label>
+                <div className="flex items-center gap-4">
+                  {(secondaryPreview || secondaryExisting) && (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <img
+                        src={secondaryPreview || secondaryExisting || ""}
+                        alt="Secondary"
+                        className="object-cover fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeSecondaryImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {!secondaryPreview && !secondaryExisting && (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSecondaryImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Images */}
+              <div className="space-y-2">
+                <Label>Additional Images</Label>
+                <div className="flex flex-wrap gap-4">
+                  {/* Existing additional images */}
+                  {additionalExisting.map((url, idx) => (
+                    <div
+                      key={`existing-${idx}`}
+                      className="relative w-24 h-24 border rounded-md overflow-hidden"
+                    >
+                      <img
+                        src={url}
+                        alt={`Additional ${idx}`}
+                        className="object-cover fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalImage(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {/* New additional previews */}
+                  {additionalPreviews.map((preview, idx) => (
+                    <div
+                      key={`new-${idx}`}
+                      className="relative w-24 h-24 border rounded-md overflow-hidden"
+                    >
+                      <img
+                        src={preview}
+                        alt={`New ${idx}`}
+                        className="object-cover fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeAdditionalImage(additionalExisting.length + idx)
+                        }
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <span className="text-xs text-gray-500">Add more</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleAdditionalImagesChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
 
+            {/* Action buttons */}
             <div className="flex justify-between items-center pt-6">
               <Button
                 type="button"
@@ -652,7 +841,6 @@ export default function EditProductPage() {
               >
                 Delete Product
               </Button>
-
               <div className="flex space-x-4">
                 <Button
                   type="button"

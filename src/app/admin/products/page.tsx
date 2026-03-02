@@ -1,19 +1,22 @@
-import { createClient } from "@/lib/supabase/supabaseServer";
+import { createAdminClient } from "@/lib/supabase/supabaseServer";
 import ProductsTable from "@/components/admin/products-table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
 export default async function AdminProductsPage() {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
-  // Fetch products with categories (include id and title)
+  // Fetch products with categories, variants, and creator/updater info
   const { data: products } = await supabase
     .from("products")
     .select(
       `
       *,
-      categories(id, title)
+      categories(id, title),
+      product_variants(*),
+      creator:users!products_created_by_fkey(id, name, email),
+      updater:users!products_updated_by_fkey(id, name, email)
     `,
     )
     .order("created_at", { ascending: false });
@@ -23,6 +26,14 @@ export default async function AdminProductsPage() {
     .from("categories")
     .select("id, title, parent_id")
     .order("title");
+
+  // Transform the data to match the Product interface
+  const transformedProducts =
+    products?.map((product) => ({
+      ...product,
+      created_by: product.creator,
+      updated_by: product.updater,
+    })) || [];
 
   return (
     <div>
@@ -39,7 +50,10 @@ export default async function AdminProductsPage() {
         </Link>
       </div>
 
-      <ProductsTable products={products || []} categories={categories || []} />
+      <ProductsTable
+        products={transformedProducts}
+        categories={categories || []}
+      />
     </div>
   );
 }

@@ -20,7 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 interface Category {
   id: string;
@@ -39,12 +41,22 @@ export default function NewCategoryPage() {
     title: "",
     description: "",
     parent_id: "",
-    image: "",
   });
+
+  // Image state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Clean up preview URL
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const fetchCategories = async () => {
     try {
@@ -52,7 +64,6 @@ export default function NewCategoryPage() {
       const data = await res.json();
       if (res.ok) {
         setCategories(data.categories);
-        // Build options with indentation
         const options = buildCategoryOptions(data.categories);
         setParentOptions(options);
       }
@@ -86,18 +97,34 @@ export default function NewCategoryPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("parent_id", formData.parent_id || "null");
+      if (imageFile) formDataToSend.append("image", imageFile);
+
       const res = await fetch("/api/categories", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          parent_id: formData.parent_id === "null" ? null : formData.parent_id,
-        }),
+        body: formDataToSend,
       });
 
       const data = await res.json();
@@ -182,16 +209,42 @@ export default function NewCategoryPage() {
                 </Select>
               </div>
 
+              {/* Image upload */}
               <div className="space-y-2">
-                <Label htmlFor="image">Image URL</Label>
-                <Input
-                  id="image"
-                  name="image"
-                  type="url"
-                  value={formData.image}
-                  onChange={handleChange}
-                  placeholder="https://example.com/image.jpg"
-                />
+                <Label htmlFor="image">Category Image (optional)</Label>
+                <div className="flex items-center gap-4">
+                  {imagePreview ? (
+                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                      <Image
+                        src={imagePreview}
+                        alt="Category preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Supported formats: JPEG, PNG, GIF
+                </p>
               </div>
             </div>
 

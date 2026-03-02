@@ -74,6 +74,7 @@ interface Rating {
 
 interface Product {
   id: string;
+  slug: string;
   title: string;
   description: string;
   price: number;
@@ -85,6 +86,7 @@ interface Product {
 
 interface RecommendedProduct {
   id: string;
+  slug: string;
   title: string;
   price: number;
   images: string[];
@@ -645,18 +647,14 @@ export default function ProductDetailClient({
               Add to Cart
             </Button>
 
-            <div className="grid grid-cols-3 gap-4 pt-6">
+            <div className="grid grid-cols-2 gap-4 pt-6">
               <div className="text-center">
                 <Truck className="h-6 w-6 mx-auto mb-2 text-[#f73a00]" />
                 <p className="text-xs text-gray-600">Free Shipping</p>
               </div>
               <div className="text-center">
-                <Shield className="h-6 w-6 mx-auto mb-2 text-[#f73a00]" />
-                <p className="text-xs text-gray-600">2 Year Warranty</p>
-              </div>
-              <div className="text-center">
                 <RotateCcw className="h-6 w-6 mx-auto mb-2 text-[#f73a00]" />
-                <p className="text-xs text-gray-600">30 Day Returns</p>
+                <p className="text-xs text-gray-600">Returns</p>
               </div>
             </div>
           </div>
@@ -936,7 +934,7 @@ export default function ProductDetailClient({
               {recommended.map((rec) => (
                 <Link
                   key={rec.id}
-                  href={`/products/${rec.id}`}
+                  href={`/products/${rec.slug}`}
                   className="group"
                 >
                   <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all h-full">

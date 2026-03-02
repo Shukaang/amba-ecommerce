@@ -1,10 +1,9 @@
 /**
- * Convert any text to a URL-friendly slug
- * Handles special characters, multiple spaces, and edge cases
+ * Convert any text to a URL‑friendly slug
  */
 export function slugify(text: string): string {
   if (!text) return '';
-  
+
   return text
     .toString()
     .toLowerCase()
@@ -18,33 +17,34 @@ export function slugify(text: string): string {
 }
 
 /**
- * Generate a unique slug by checking database
+ * Generate a unique slug by checking the database
  */
-export async function generateUniqueSlug(title: string, supabase: any, currentId?: string): Promise<string> {
+export async function generateUniqueSlug(
+  title: string,
+  supabase: any,
+  currentId?: string
+): Promise<string> {
   let slug = slugify(title);
   let finalSlug = slug;
   let counter = 1;
-  
-  // Keep checking until we find a unique slug
+
   while (true) {
     let query = supabase
       .from('products')
       .select('slug')
       .eq('slug', finalSlug);
-    
-    // If updating existing product, exclude current ID
+
     if (currentId) {
       query = query.neq('id', currentId);
     }
-    
+
     const { data } = await query.maybeSingle();
-    
+
     if (!data) break; // Slug is unique
-    
-    // Add counter and try again
+
     finalSlug = `${slug}-${counter}`;
     counter++;
   }
-  
+
   return finalSlug;
 }

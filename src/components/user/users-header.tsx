@@ -133,7 +133,7 @@ export default function UserHeader() {
           .from("products")
           .select("id, title, price, images")
           .ilike("title", `%${debouncedSearch}%`)
-          .limit(5);
+          .limit(12);
         setSearchSuggestions(data || []);
         setShowSuggestions(true);
       } catch (error) {

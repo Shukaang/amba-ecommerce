@@ -9,6 +9,17 @@ import {
   FolderOpen,
   Image as ImageIcon,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface Category {
   id: string;
@@ -29,6 +40,10 @@ interface CategoriesTableProps {
 
 export default function CategoriesTable({ categories }: CategoriesTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryNode | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const categoryTree = useMemo(() => {
     const map = new Map<string, CategoryNode>();
@@ -54,27 +69,36 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
     );
   };
 
-  const handleDelete = async (categoryId: string, categoryTitle: string) => {
-    if (confirm(`Are you sure you want to delete "${categoryTitle}"?`)) {
-      try {
-        const res = await fetch(`/api/categories/${categoryId}`, {
-          method: "DELETE",
-        });
-        if (res.ok) {
-          alert("Category deleted successfully");
-          window.location.reload();
-        } else {
-          const data = await res.json();
-          alert(data.error || "Failed to delete category");
-        }
-      } catch (error) {
-        console.error("Delete error:", error);
-        alert("Failed to delete category");
+  const handleDeleteClick = (category: CategoryNode) => {
+    setCategoryToDelete(category);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("Category deleted successfully");
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete category");
       }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete category");
+    } finally {
+      setIsDeleting(false);
+      setCategoryToDelete(null);
     }
   };
 
-  // ✅ Use React.ReactElement[] instead of JSX.Element[]
+  // Use React.ReactElement[] instead of JSX.Element[]
   const renderTree = (
     nodes: CategoryNode[],
     level = 0,
@@ -164,7 +188,7 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
                 <Edit className="h-4 w-4" />
               </Link>
               <button
-                onClick={() => handleDelete(cat.id, cat.title)}
+                onClick={() => handleDeleteClick(cat)}
                 className="text-red-600 hover:text-red-900 transition-colors"
                 title="Delete"
               >
@@ -180,59 +204,101 @@ export default function CategoriesTable({ categories }: CategoriesTableProps) {
   };
 
   return (
-    <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-      {/* Search */}
-      <div className="p-4 border-b">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1 max-w-lg">
-            <input
-              type="search"
-              placeholder="Search categories by name or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="text-sm text-gray-500">
-            {categoryTree.length} main categories • {categories.length} total
+    <>
+      <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+        {/* Search */}
+        <div className="p-4 border-b">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1 max-w-lg">
+              <input
+                type="search"
+                placeholder="Search categories by name or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="text-sm text-gray-500">
+              {categoryTree.length} main categories • {categories.length} total
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
 
-          <tbody className="bg-white divide-y divide-gray-200">
-            {renderTree(categoryTree)}
-          </tbody>
-        </table>
-      </div>
-
-      {categories.length === 0 && (
-        <div className="p-8 text-center">
-          <div className="text-gray-400 mb-2">No categories found</div>
-          <p className="text-sm text-gray-500">
-            Create your first category to get started
-          </p>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {renderTree(categoryTree)}
+            </tbody>
+          </table>
         </div>
-      )}
-    </div>
+
+        {categories.length === 0 && (
+          <div className="p-8 text-center">
+            <div className="text-gray-400 mb-2">No categories found</div>
+            <p className="text-sm text-gray-500">
+              Create your first category to get started
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!categoryToDelete}
+        onOpenChange={() => setCategoryToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{categoryToDelete?.title}"?
+              {categoryToDelete?.children &&
+                categoryToDelete.children.length > 0 && (
+                  <span className="block mt-2 font-semibold text-amber-600">
+                    This category has {categoryToDelete.children.length}{" "}
+                    subcategor
+                    {categoryToDelete.children.length === 1 ? "y" : "ies"} that
+                    will also be deleted.
+                  </span>
+                )}
+              <span className="block mt-2">
+                Products in this category will become uncategorized.
+              </span>
+              <span className="block mt-2 text-red-600">
+                This action cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
