@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface Product {
   id: string;
+  slug: string; // ← ADD THIS - required for PremiumProductCard
   title: string;
   description: string;
   price: number;
@@ -124,7 +125,7 @@ export default function FeaturedProducts() {
 
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-5 gap-5">
           {loading ? (
-            [...Array(5)].map((_, i) => (
+            [...Array(10)].map((_, i) => (
               <div
                 key={i}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm"
