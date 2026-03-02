@@ -131,7 +131,7 @@ export default function PremiumProductCard({
 
     // If product has variants, redirect to detail page to select variant
     if (hasVariants) {
-      router.push(`/products/${product.id}`);
+      router.push(`/products/${product.slug}`);
       return;
     }
 
