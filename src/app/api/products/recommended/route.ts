@@ -20,21 +20,18 @@ export async function GET(request: NextRequest) {
     .eq('id', productId)
     .single();
 
-  // Build query: prefer same category, otherwise high-rated
-  let query = supabase
-    .from('products')
-    .select('id, title, price, images, average_rating')
-    .neq('id', productId)
-    .order('average_rating', { ascending: false })
-    .limit(limit);
+  // Base query with slug and approved filter
+  const baseQuery = () =>
+    supabase
+      .from('products')
+      .select('id, slug, title, price, images, average_rating')
+      .neq('id', productId)
+      .eq('status', 'approved');
 
   if (product?.category_id) {
-    // Try to get products from the same category first
-    const { data: sameCategory } = await supabase
-      .from('products')
-      .select('id, title, price, images, average_rating')
+    // Try same category first
+    const { data: sameCategory } = await baseQuery()
       .eq('category_id', product.category_id)
-      .neq('id', productId)
       .order('average_rating', { ascending: false })
       .limit(limit);
 
@@ -42,13 +39,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ products: sameCategory });
     }
 
-    // If not enough, combine with high-rated from other categories
+    // Combine with high‑rated from other categories
     const remaining = limit - (sameCategory?.length || 0);
-    const { data: others } = await supabase
-      .from('products')
-      .select('id, title, price, images, average_rating')
+    const { data: others } = await baseQuery()
       .neq('category_id', product.category_id)
-      .neq('id', productId)
       .order('average_rating', { ascending: false })
       .limit(remaining);
 
@@ -56,7 +50,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ products: combined });
   }
 
-  // Fallback: just highest rated
-  const { data: products } = await query;
+  // Fallback: highest rated overall
+  const { data: products } = await baseQuery()
+    .order('average_rating', { ascending: false })
+    .limit(limit);
+
   return NextResponse.json({ products: products || [] });
 }

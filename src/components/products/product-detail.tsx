@@ -495,9 +495,9 @@ export default function ProductDetailClient({
           </div>
 
           {/* Right: Product info */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              <h1 className="text-xl lg:text-3xl font-bold text-gray-900 mb-4">
                 {product.title}
               </h1>
               <div className="flex items-center justify-between">
@@ -551,7 +551,7 @@ export default function ProductDetailClient({
 
             <div className="border-y border-gray-200 py-6">
               <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold text-gray-900">
+                <span className="text-xl font-bold text-gray-900">
                   Br{getDisplayPrice().toLocaleString("en-US")}
                 </span>
                 {product.product_variants.length > 0 && (
@@ -567,7 +567,7 @@ export default function ProductDetailClient({
                 <h3 className="text-sm font-medium text-gray-900 mb-3">
                   Available Variants
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                   {product.product_variants.map((variant) => {
                     const isSelected = selectedVariant?.id === variant.id;
                     const variantName = [
@@ -615,16 +615,16 @@ export default function ProductDetailClient({
                 <div className="flex items-center border-2 border-gray-200 rounded-xl">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
+                    className="px-2 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
                   >
                     -
                   </button>
-                  <span className="px-4 py-2 text-gray-900 font-medium min-w-[60px] text-center">
+                  <span className="px-2 py-2 text-gray-900 font-medium min-w-[60px] text-center">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
+                    className="px-2 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
                   >
                     +
                   </button>
@@ -934,7 +934,7 @@ export default function ProductDetailClient({
               {recommended.map((rec) => (
                 <Link
                   key={rec.id}
-                  href={`/products/${product.slug}`}
+                  href={`/products/${rec.slug}`}
                   className="group"
                 >
                   <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all h-full">

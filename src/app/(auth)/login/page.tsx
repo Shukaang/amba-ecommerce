@@ -15,8 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Eye, EyeOff } from "lucide-react";
 import Header from "@/components/auth/header";
 import Footer from "@/components/auth/footer";
+import { loginSchema } from "@/lib/auth/schemas"; // adjust path if needed
 
 function LoginContent() {
   const router = useRouter();
@@ -25,15 +28,39 @@ function LoginContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {},
+  );
   const [loading, setLoading] = useState(false);
+  const [generalError, setGeneralError] = useState("");
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+    setGeneralError("");
+
+    // Validate with Zod
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        const field = err.path[0] as string;
+        fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email, password);
       router.push(redirectTo);
+    } catch (err: any) {
+      setGeneralError(
+        err.message || "Login failed. Please check your credentials.",
+      );
     } finally {
       setLoading(false);
     }
@@ -56,6 +83,12 @@ function LoginContent() {
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {generalError && (
+              <Alert variant="destructive" className="rounded-xl">
+                <AlertDescription>{generalError}</AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">EMAIL ADDRESS</Label>
               <Input
@@ -64,20 +97,39 @@ function LoginContent() {
                 placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
+                className={errors.email ? "border-red-500" : ""}
               />
+              {errors.email && (
+                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">PASSWORD</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+              )}
             </div>
           </CardContent>
 
