@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     } catch (dnsError: any) {
       // DNS resolution failed – domain probably doesn't exist
       return NextResponse.json(
-        { error: 'Email domain does not exist. Please enter a valid email' },
+        { error: 'Email does not exist. Please enter a valid email' },
         { status: 400 }
       );
     }

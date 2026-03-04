@@ -1,28 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const TRACK_DELAY = 3000; // 3 seconds
 
 export default function PageTracker() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Skip tracking if SUPERADMIN
-    if (user?.role === "SUPERADMIN") return;
+    // Skip tracking for admins
+    if (user?.role === "SUPERADMIN" || user?.role === "ADMIN") return;
 
     if (typeof window === "undefined") return;
 
     const trackVisit = async () => {
-      // Check if session expired
       const lastTrackTime = localStorage.getItem("last_track_time");
       const now = Date.now();
       let sessionId = localStorage.getItem("visitor_session_id");
 
-      // If no session or session expired (>30 min), create new session
       if (
         !sessionId ||
         !lastTrackTime ||
@@ -32,7 +32,6 @@ export default function PageTracker() {
         localStorage.setItem("visitor_session_id", sessionId);
       }
 
-      // Update last track time
       localStorage.setItem("last_track_time", now.toString());
 
       try {
@@ -41,6 +40,7 @@ export default function PageTracker() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sessionId,
+            userId: user?.id || null,
           }),
         });
       } catch (error) {
@@ -48,8 +48,14 @@ export default function PageTracker() {
       }
     };
 
-    trackVisit();
-  }, [pathname, user]); // Add user to dependencies
+    // Clear previous timeout and set new one
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(trackVisit, TRACK_DELAY);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [pathname, user]);
 
   return null;
 }

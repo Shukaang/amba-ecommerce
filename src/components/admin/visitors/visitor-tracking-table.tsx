@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { ExpandableVisitorRow } from "./expandable-visitor-row";
+import { createClient } from "@/lib/supabase/supabaseClient";
 
 interface Visitor {
   id: string;
@@ -44,39 +45,65 @@ export function VisitorTrackingTable() {
   );
   const [bulkDelete, setBulkDelete] = useState<string[]>([]);
 
-  const fetchVisitors = async (pageNum = 1) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: pageNum.toString(),
-        limit: "15",
-      });
+  const fetchVisitors = useCallback(
+    async (pageNum = 1) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: "15",
+        });
 
-      if (searchTerm) {
-        params.set("search", searchTerm);
+        if (searchTerm) {
+          params.set("search", searchTerm);
+        }
+
+        if (filter !== "all") {
+          params.set("filter", filter);
+        }
+
+        const response = await fetch(
+          `/api/admin/visitors?${params.toString()}`,
+        );
+        const data = await response.json();
+
+        setVisitors(data.visitors || []);
+        setFilteredVisitors(data.visitors || []);
+        setTotalPages(data.pages || 1);
+        setBulkDelete([]); // Reset bulk delete
+      } catch (error) {
+        console.error("Error fetching visitors:", error);
+      } finally {
+        setLoading(false);
       }
+    },
+    [searchTerm, filter],
+  );
 
-      if (filter !== "all") {
-        params.set("filter", filter);
-      }
-
-      const response = await fetch(`/api/admin/visitors?${params.toString()}`);
-      const data = await response.json();
-
-      setVisitors(data.visitors || []);
-      setFilteredVisitors(data.visitors || []);
-      setTotalPages(data.pages || 1);
-      setBulkDelete([]); // Reset bulk delete
-    } catch (error) {
-      console.error("Error fetching visitors:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Initial fetch and when page/filter/search changes
   useEffect(() => {
     fetchVisitors(page);
-  }, [page, filter]);
+  }, [page, filter, searchTerm, fetchVisitors]);
+
+  // Real‑time subscription
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("visitor_table_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "visitor_tracking" },
+        () => {
+          fetchVisitors(page);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [page, fetchVisitors]); // page and fetchVisitors are stable
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
