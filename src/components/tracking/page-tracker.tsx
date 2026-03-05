@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-const TRACK_DELAY = 3000; // 3 seconds
+const TRACK_DELAY = 60000; // 3 seconds
 
 export default function PageTracker() {
   const pathname = usePathname();
