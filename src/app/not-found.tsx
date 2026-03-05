@@ -62,12 +62,6 @@ export default function NotFound() {
             >
               Contact Support
             </Link>
-            <Link
-              href="/faq"
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              FAQ
-            </Link>
           </div>
         </div>
       </div>

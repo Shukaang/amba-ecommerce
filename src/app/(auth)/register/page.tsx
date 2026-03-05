@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
@@ -19,9 +19,44 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
 import Header from "@/components/auth/header";
 import Footer from "@/components/auth/footer";
-import { registerSchema } from "@/lib/auth/schemas"; // adjust path if needed
+import { registerSchema } from "@/lib/auth/schemas";
+
+export const dynamic = "force-dynamic";
+
+// Skeleton components
+function HeaderSkeleton() {
+  return (
+    <header className="bg-white shadow-sm border-b border-gray-200">
+      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-0">
+          <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
+          <div className="w-32 h-8 bg-gray-200 rounded ml-2 animate-pulse" />
+        </div>
+        <div className="flex items-center gap-0">
+          <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
+          <div className="w-16 h-6 bg-gray-200 rounded ml-2 animate-pulse" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function FooterSkeleton() {
+  return (
+    <footer className="bg-gray-100 border-t border-gray-200 py-5">
+      <div className="container mx-auto px-4 text-center">
+        <div className="flex justify-center gap-6 mb-4">
+          <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+          <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="w-48 h-4 bg-gray-200 rounded mx-auto animate-pulse" />
+      </div>
+    </footer>
+  );
+}
 
 export default function RegisterPage() {
+  // ... (keep all your existing state and handlers)
   const router = useRouter();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
@@ -41,7 +76,6 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field error when user types
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -56,7 +90,6 @@ export default function RegisterPage() {
     setErrors({});
     setGeneralError("");
 
-    // Validate with Zod (includes confirmPassword via refine)
     const result = registerSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -88,7 +121,9 @@ export default function RegisterPage() {
 
   return (
     <>
-      <Header />
+      <Suspense fallback={<HeaderSkeleton />}>
+        <Header />
+      </Suspense>
       <main className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="space-y-1 text-center">
@@ -265,7 +300,9 @@ export default function RegisterPage() {
           </form>
         </Card>
       </main>
-      <Footer />
+      <Suspense fallback={<FooterSkeleton />}>
+        <Footer />
+      </Suspense>
     </>
   );
 }

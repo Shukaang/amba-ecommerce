@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
@@ -35,7 +35,53 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-export default function CheckoutPage() {
+// Force dynamic rendering to avoid prerender issues
+export const dynamic = "force-dynamic";
+
+// Loading skeleton for checkout page
+function CheckoutSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
+      <div className="container mx-auto px-4">
+        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-6" />
+        <div className="h-10 w-64 bg-gray-200 rounded animate-pulse mb-8" />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Shipping Form Skeleton */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-gray-200 h-24 animate-pulse" />
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="h-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-20 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="h-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Order Summary Skeleton */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-gray-200 h-20 animate-pulse" />
+              <div className="p-6 space-y-4">
+                <div className="h-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-12 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main checkout content component
+function CheckoutContent() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { items, total, clearCart, loading: cartLoading } = useCart();
@@ -44,7 +90,8 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [orderTotal, setOrderTotal] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [showTermsDialog, setShowTermsDialog] = useState(false); // new state
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const isLoading = authLoading || cartLoading;
 
@@ -54,8 +101,13 @@ export default function CheckoutPage() {
     address: "",
   });
 
+  // Handle mounting to avoid hydration issues
   useEffect(() => {
-    if (user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (user && mounted) {
       setFormData((prev) => ({
         ...prev,
         fullName: user.name || "",
@@ -63,29 +115,28 @@ export default function CheckoutPage() {
         address: user.address || "",
       }));
     }
-  }, [user]);
+  }, [user, mounted]);
 
+  // Handle redirect for non-authenticated users
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (mounted && !isLoading && !user) {
       toast.error("Please login to checkout");
       const returnUrl = encodeURIComponent(window.location.pathname);
       router.push(`/login?redirectTo=${returnUrl}`);
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, mounted]);
+
+  // Don't render anything until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return <CheckoutSkeleton />;
+  }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#f73a00] mx-auto mb-4" />
-          <p className="text-gray-600">Loading checkout...</p>
-        </div>
-      </div>
-    );
+    return <CheckoutSkeleton />;
   }
 
   if (!user) {
-    return null;
+    return null; // Will redirect via useEffect
   }
 
   if (items.length === 0 && !orderPlaced) {
@@ -638,5 +689,14 @@ Address: ${formData.address}`;
         </div>
       )}
     </>
+  );
+}
+
+// Main export with Suspense boundary
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutSkeleton />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
