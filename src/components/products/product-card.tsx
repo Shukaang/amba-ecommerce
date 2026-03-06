@@ -151,8 +151,6 @@ export default function PremiumProductCard({
         price: minPrice,
       });
 
-      toast.success("Added to cart!");
-
       setTimeout(() => {
         setIsAdding(false);
       }, 800);

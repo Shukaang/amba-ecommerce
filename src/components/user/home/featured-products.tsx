@@ -28,16 +28,16 @@ interface Product {
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"featured" | "new" | "trending">(
-    "featured",
+  const [activeTab, setActiveTab] = useState<"new" | "featured" | "trending">(
+    "new",
   );
 
   const fetchProducts = async (tab: typeof activeTab) => {
     setLoading(true);
     try {
-      let url = "/api/products?limit=10";
-      if (tab === "featured") url += "&featured=true";
+      let url = "/api/products?limit=15";
       if (tab === "new") url += "&sort=newest";
+      if (tab === "featured") url += "&featured=true";
       if (tab === "trending") url += "&sort=trending";
 
       const response = await fetch(url);
@@ -79,8 +79,8 @@ export default function FeaturedProducts() {
   }, [activeTab]);
 
   const tabs = [
-    { id: "featured", label: "Featured", icon: Sparkles },
     { id: "new", label: "New Arrivals", icon: Clock },
+    { id: "featured", label: "Featured", icon: Sparkles },
     { id: "trending", label: "Trending", icon: TrendingUp },
   ] as const;
 

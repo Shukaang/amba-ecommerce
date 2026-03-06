@@ -19,6 +19,7 @@ interface CartItem {
   product: {
     title: string;
     images: string[];
+    slug: string;
   };
   variant?: {
     color: string | null;
@@ -120,8 +121,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         };
         return updated;
       } else {
-        // Create temporary optimistic item (without ID)
-        // We'll replace it with real data from server
+        // Create temporary optimistic item (will be replaced)
         const optimisticItem: CartItem = {
           id: `temp-${Date.now()}`,
           productId: newItem.productId,
@@ -129,8 +129,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           quantity: newItem.quantity,
           price: newItem.price,
           product: {
-            title: "Loading...", // Will be replaced by server response
+            title: "Loading...",
             images: [],
+            slug: "",
           },
           variant: null,
         };
@@ -151,7 +152,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Failed to add to cart");
       }
 
-      // Replace optimistic item with real data from server
+      // Replace optimistic item with real data from server (includes slug)
       setItems((current) => {
         if (existingIndex >= 0) {
           // Update existing item with server data
@@ -165,6 +166,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             .concat(data.item);
         }
       });
+
+      toast.success("Item added to cart!");
     } catch (error: any) {
       // Revert on error
       setItems(previousItems);
@@ -176,7 +179,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Optimistic update quantity
   const updateQuantity = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
-      // Remove if quantity zero
       await removeItem(itemId);
       return;
     }
@@ -202,7 +204,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Failed to update quantity");
       }
 
-      // Update with server response (in case price changed, etc.)
+      // Update with server response (includes slug)
       if (data.item) {
         setItems((current) =>
           current.map((item) => (item.id === itemId ? data.item : item)),
@@ -233,6 +235,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         throw new Error(data.error || "Failed to remove item");
       }
+
+      toast.success("Item removed from cart");
     } catch (error: any) {
       setItems(previousItems);
       toast.error(error.message);
@@ -240,13 +244,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Clear cart (bulk delete)
+  // Clear cart
   const clearCart = async () => {
     const previousItems = [...items];
     setItems([]);
 
     try {
-      // Delete all items one by one (could be optimized with bulk endpoint)
       await Promise.all(
         previousItems.map((item) =>
           fetch(`/api/cart/${item.id}`, { method: "DELETE" }),

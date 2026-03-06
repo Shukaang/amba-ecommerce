@@ -249,8 +249,6 @@ export default function ProductDetailClient({
         quantity,
         price: selectedVariant?.price || product.price,
       });
-
-      toast.success("Added to cart!");
     } catch (error: any) {
       toast.error(error.message || "Failed to add to cart");
     }

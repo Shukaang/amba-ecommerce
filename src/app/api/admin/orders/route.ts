@@ -10,7 +10,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     const orders = await prisma.order.findMany({
       where: { userId: userId! },
       include: {
-        items: {
+        items: { 
           include: { product: true },
         },
       },

@@ -51,7 +51,7 @@ export async function PUT(
       })
     }
 
-    // Update quantity only – price remains unchanged
+    // Update quantity only
     const { data: updatedItem, error: updateError } = await supabase
       .from('cart_items')
       .update({
@@ -61,7 +61,7 @@ export async function PUT(
       .eq('id', id)
       .select(`
         *,
-        products!inner(title, images),
+        products!inner(title, images, slug),
         product_variants!left(color, size, unit)
       `)
       .single()
@@ -77,6 +77,7 @@ export async function PUT(
       product: {
         title: updatedItem.products.title,
         images: updatedItem.products.images,
+        slug: updatedItem.products.slug, // Include slug
       },
       variant: updatedItem.product_variants ? {
         color: updatedItem.product_variants.color,

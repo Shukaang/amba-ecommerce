@@ -36,7 +36,7 @@ export default function CartPage() {
 
   const isLoading = authLoading || cartLoading;
 
-  // Redirect if not logged in (after loading is done)
+  // Redirect if not logged in
   useEffect(() => {
     if (!isLoading && !user) {
       toast.error("Please login to view your cart");
@@ -45,7 +45,6 @@ export default function CartPage() {
     }
   }, [user, isLoading, router]);
 
-  // Show loading spinner while auth/cart is loading
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
@@ -57,7 +56,6 @@ export default function CartPage() {
     );
   }
 
-  // If not logged in after loading, return null (redirect will happen)
   if (!user) {
     return null;
   }
@@ -136,27 +134,32 @@ export default function CartPage() {
                     variantParts.push(`Unit: ${item.variant.unit}`);
                   const variantDisplay = variantParts.join(" • ");
 
+                  // Get product slug - MUST exist in database
+                  const productSlug = item.product.slug;
+
                   return (
                     <div
                       key={item.id}
                       className="p-6 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex flex-col sm:flex-row gap-6">
-                        {/* Product Image */}
+                        {/* Product Image - Link uses slug only */}
                         <div className="sm:w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden flex-shrink-0">
                           {item.product.images &&
                           item.product.images.length > 0 ? (
-                            <Link href={`/products/${item.productId}`}>
+                            <Link href={`/products/${productSlug}`}>
                               <img
                                 src={item.product.images[0]}
                                 alt={item.product.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                               />
                             </Link>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="h-8 w-8 text-gray-400" />
-                            </div>
+                            <Link href={`/products/${productSlug}`}>
+                              <div className="w-full h-full flex items-center justify-center hover:bg-gray-300 transition-colors">
+                                <Package className="h-8 w-8 text-gray-400" />
+                              </div>
+                            </Link>
                           )}
                         </div>
 
@@ -164,9 +167,12 @@ export default function CartPage() {
                         <div className="flex-1">
                           <div className="flex flex-col sm:flex-row sm:justify-between">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                {item.product.title}
-                              </h3>
+                              {/* Product title links to slug only */}
+                              <Link href={`/products/${productSlug}`}>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1 hover:text-[#f73a00] transition-colors">
+                                  {item.product.title}
+                                </h3>
+                              </Link>
                               {variantDisplay && (
                                 <Badge
                                   variant="outline"

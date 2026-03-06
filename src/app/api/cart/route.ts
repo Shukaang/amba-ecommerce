@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       .from('cart_items')
       .select(`
         *,
-        products!inner(title, images),
+        products!inner(title, images, slug),
         product_variants!left(color, size, unit)
       `)
       .eq('user_id', user.id)
@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
       productId: item.product_id,
       variantId: item.variant_id,
       quantity: item.quantity,
-      price: item.price, // use stored price
+      price: item.price,
       product: {
         title: item.products.title,
         images: item.products.images,
+        slug: item.products.slug, // Include slug
       },
       variant: item.product_variants ? {
         color: item.product_variants.color,
@@ -105,10 +106,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get product base price
+    // Get product base price and slug
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select('id, price')
+      .select('id, price, slug') // Include slug
       .eq('id', productId)
       .single()
 
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
     let cartItem
 
     if (existingItem) {
-      // Update quantity (price remains as originally stored)
+      // Update quantity
       const { data: updatedItem, error: updateError } = await supabase
         .from('cart_items')
         .update({
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
         .eq('id', existingItem.id)
         .select(`
           *,
-          products!inner(title, images),
+          products!inner(title, images, slug),
           product_variants!left(color, size, unit)
         `)
         .single()
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest) {
       if (updateError) throw updateError
       cartItem = updatedItem
     } else {
-      // Create new cart item with the determined price
+      // Create new cart item
       const { data: newItem, error: insertError } = await supabase
         .from('cart_items')
         .insert({
@@ -175,11 +176,11 @@ export async function POST(request: NextRequest) {
           product_id: productId,
           variant_id: variantId,
           quantity,
-          price: itemPrice, // store correct price
+          price: itemPrice,
         })
         .select(`
           *,
-          products!inner(title, images),
+          products!inner(title, images, slug),
           product_variants!left(color, size, unit)
         `)
         .single()
@@ -193,10 +194,11 @@ export async function POST(request: NextRequest) {
       productId: cartItem.product_id,
       variantId: cartItem.variant_id,
       quantity: cartItem.quantity,
-      price: cartItem.price, // use stored price
+      price: cartItem.price,
       product: {
         title: cartItem.products.title,
         images: cartItem.products.images,
+        slug: cartItem.products.slug, // Include slug
       },
       variant: cartItem.product_variants ? {
         color: cartItem.product_variants.color,
