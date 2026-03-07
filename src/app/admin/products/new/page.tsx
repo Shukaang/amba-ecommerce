@@ -64,6 +64,7 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    link: "",
     category_id: "",
     price: "",
   });
@@ -243,6 +244,7 @@ export default function NewProductPage() {
 
       formDataToSend.append("title", formData.title);
       formDataToSend.append("description", formData.description);
+      formDataToSend.append("link", formData.link || "null");
       formDataToSend.append("category_id", formData.category_id || "null");
       formDataToSend.append("price", formData.price);
 
@@ -326,6 +328,22 @@ export default function NewProductPage() {
                 rows={4}
                 required
               />
+            </div>
+
+            {/* Link */}
+            <div className="space-y-2">
+              <Label htmlFor="link">External Link (optional)</Label>
+              <Input
+                id="link"
+                name="link"
+                type="url"
+                value={formData.link}
+                onChange={handleChange}
+                placeholder="https://example.com/product"
+              />
+              <p className="text-xs text-gray-500">
+                An external URL where customers can buy or learn more.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

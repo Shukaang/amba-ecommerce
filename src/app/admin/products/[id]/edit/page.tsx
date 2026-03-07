@@ -77,6 +77,7 @@ export default function EditProductPage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    link: "",
     category_id: "",
     price: "",
   });
@@ -137,6 +138,7 @@ export default function EditProductPage() {
         setFormData({
           title: prod.title,
           description: prod.description,
+          link: prod.link || "",
           category_id: prod.category_id || "",
           price: prod.price.toString(),
         });

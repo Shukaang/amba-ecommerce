@@ -90,6 +90,7 @@ async function createProduct(request: NextRequest) {
     const formData = await request.formData();
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
+    const link = formData.get('link') as string | null;
     const category_id = formData.get('category_id') as string;
     const price = parseFloat(formData.get('price') as string);
     const variantsJson = formData.get('variants') as string | null;
@@ -120,6 +121,7 @@ async function createProduct(request: NextRequest) {
         status: 'pending',
         created_by: user.id,
         updated_by: user.id,
+        link,
       })
       .select()
       .single();

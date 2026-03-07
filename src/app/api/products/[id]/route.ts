@@ -62,6 +62,7 @@ async function updateProduct(
 
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
+    const link = formData.get('link') as string | null;
     const category_id = formData.get('category_id') as string;
     const price = parseFloat(formData.get('price') as string);
     const existingImagesJson = formData.get('existingImages') as string;
@@ -111,6 +112,7 @@ async function updateProduct(
         images: finalImages,
         updated_at: new Date().toISOString(),
         updated_by: user.id,
+        link,
       })
       .eq('id', id);
 

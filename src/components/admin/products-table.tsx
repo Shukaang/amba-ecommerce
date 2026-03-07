@@ -46,6 +46,7 @@ interface Product {
   slug: string;
   title: string;
   description: string;
+  link: string | null;
   price: number;
   average_rating: number;
   images: string[];
@@ -552,6 +553,23 @@ export default function ProductsTable({
                         colSpan={6}
                         className="px-4 py-3 bg-gray-50 border-t border-gray-200"
                       >
+                        {/* Link */}
+                        {product.link && (
+                          <div>
+                            <h4 className="font-medium text-gray-700 mb-1">
+                              External Link
+                            </h4>
+                            <a
+                              href={product.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline break-all"
+                            >
+                              {product.link}
+                            </a>
+                          </div>
+                        )}
+
                         <div className="space-y-3 text-sm">
                           <div>
                             <h4 className="font-medium text-gray-700 mb-1">

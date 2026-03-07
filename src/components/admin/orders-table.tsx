@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment, useEffect } from "react";
+import { useState, Fragment, useEffect, useMemo, useCallback } from "react";
 import {
   Eye,
   EyeOff,
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 
 // ---------- Type Definitions ----------
 interface OrderItem {
@@ -34,6 +35,7 @@ interface OrderItem {
   products: {
     title: string;
     images: string[];
+    link: string;
   };
   product_variants: {
     color: string;
@@ -44,7 +46,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  order_number: string;
+  order_number: string | null;
   total_price: number;
   status: string;
   shipping_info: string;
@@ -64,35 +66,97 @@ interface OrdersTableProps {
   orders: Order[];
 }
 
+// ---------- Helper Functions ----------
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "COMPLETED":
+      return "bg-green-100 text-green-800";
+    case "SHIPPED":
+      return "bg-blue-100 text-blue-800";
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-800";
+    case "CANCELED":
+      return "bg-red-100 text-red-800";
+    case "CONFIRMED":
+      return "bg-purple-100 text-purple-800";
+    case "FAILED":
+      return "bg-gray-100 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "COMPLETED":
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
+    case "SHIPPED":
+      return <Truck className="h-4 w-4 text-blue-600" />;
+    case "PENDING":
+      return <Clock className="h-4 w-4 text-yellow-600" />;
+    case "CANCELED":
+      return <XCircle className="h-4 w-4 text-red-600" />;
+    default:
+      return <Package className="h-4 w-4 text-gray-600" />;
+  }
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatFullDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+// Helper to get a human-friendly order reference
+const getOrderRef = (order: Pick<Order, "id" | "order_number">) => {
+  if (order.order_number) return `#${order.order_number}`;
+  return `ref ${order.id.slice(0, 8)}`;
+};
+
 // ---------- Main Component ----------
 export default function OrdersTable({
   orders: initialOrders,
 }: OrdersTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState<string | null>(null);
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [loading, setLoading] = useState<string | null>(null); // for status updates
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<{
     id: string;
-    orderNumber: string;
+    orderNumber: string | null; // 👈 allow null
   } | null>(null);
 
-  // ---------- Real-time subscription ----------
+  // ---------- Real-time subscription (only for new orders) ----------
   useEffect(() => {
     const supabase = createClient();
 
     const channel = supabase
-      .channel("admin-orders-changes")
+      .channel("admin-orders-insert")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         async (payload) => {
-          // Fetch full order with relations
+          // Fetch the complete new order with relations
           const { data: newOrder, error } = await supabase
             .from("orders")
             .select(
@@ -118,28 +182,6 @@ export default function OrdersTable({
           }
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders" },
-        (payload) => {
-          setOrders((prev) =>
-            prev.map((order) =>
-              order.id === payload.new.id
-                ? { ...order, ...payload.new }
-                : order,
-            ),
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "orders" },
-        (payload) => {
-          setOrders((prev) =>
-            prev.filter((order) => order.id !== payload.old.id),
-          );
-        },
-      )
       .subscribe();
 
     return () => {
@@ -147,112 +189,82 @@ export default function OrdersTable({
     };
   }, []);
 
-  // ---------- Helper functions ----------
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "SHIPPED":
-        return <Truck className="h-4 w-4 text-blue-600" />;
-      case "PENDING":
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case "CANCELED":
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Package className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  // ---------- Event Handlers ----------
+  const handleStatusUpdate = useCallback(
+    async (orderId: string, newStatus: string) => {
+      const currentOrder = orders.find((order) => order.id === orderId);
+      if (currentOrder?.status === newStatus) return;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-green-100 text-green-800";
-      case "SHIPPED":
-        return "bg-blue-100 text-blue-800";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "CANCELED":
-        return "bg-red-100 text-red-800";
-      case "CONFIRMED":
-        return "bg-purple-100 text-purple-800";
-      case "FAILED":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+      setLoading(orderId);
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
-    const currentOrder = orders.find((order) => order.id === orderId);
-    if (currentOrder?.status === newStatus) return;
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
 
-    setLoading(orderId);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const errorText = await res.text();
+          console.error("Non-JSON response:", errorText.substring(0, 200));
+          throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+        }
 
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+        const data = await res.json();
 
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const errorText = await res.text();
-        console.error("Non-JSON response:", errorText.substring(0, 200));
-        throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+        if (!res.ok) {
+          throw new Error(
+            data.error || `Failed to update order status (${res.status})`,
+          );
+        }
+
+        toast.success(data.message || "Order status updated successfully");
+
+        // Update the order in state with the full updated order from API
+        const updatedOrder = data.order;
+        if (updatedOrder) {
+          setOrders((prev) =>
+            prev.map((order) =>
+              order.id === orderId ? { ...order, ...updatedOrder } : order,
+            ),
+          );
+        }
+      } catch (error: any) {
+        console.error("Status update error:", error);
+        toast.error(error.message || "Failed to update order status");
+
+        // Revert the select element
+        const selectElement = document.querySelector(
+          `select[data-order-id="${orderId}"]`,
+        ) as HTMLSelectElement;
+        if (selectElement && currentOrder) {
+          selectElement.value = currentOrder.status;
+        }
+      } finally {
+        setLoading(null);
       }
+    },
+    [orders],
+  );
 
-      const data = await res.json();
+  const openDeleteModal = useCallback(
+    (orderId: string, orderNumber: string | null) => {
+      setOrderToDelete({ id: orderId, orderNumber });
+      setDeleteModalOpen(true);
+    },
+    [],
+  );
 
-      if (!res.ok) {
-        throw new Error(
-          data.error || `Failed to update order status (${res.status})`,
-        );
-      }
-
-      toast.success(data.message || "Order status updated successfully");
-
-      // Use the full updated order from the API response
-      const updatedOrder = data.order;
-
-      if (updatedOrder) {
-        setOrders((prev) =>
-          prev.map((order) =>
-            order.id === orderId ? { ...order, ...updatedOrder } : order,
-          ),
-        );
-      }
-    } catch (error: any) {
-      console.error("Status update error:", error);
-      toast.error(error.message || "Failed to update order status");
-
-      // Revert the select element if needed
-      const selectElement = document.querySelector(
-        `select[data-order-id="${orderId}"]`,
-      ) as HTMLSelectElement;
-      if (selectElement && currentOrder) {
-        selectElement.value = currentOrder.status;
-      }
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  // Delete flow with AlertDialog
-  const openDeleteModal = (orderId: string, orderNumber: string) => {
-    setOrderToDelete({ id: orderId, orderNumber });
-    setDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
+  const closeDeleteModal = useCallback(() => {
     setDeleteModalOpen(false);
     setOrderToDelete(null);
-  };
+  }, []);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!orderToDelete) return;
 
-    const { id, orderNumber } = orderToDelete;
+    const { id } = orderToDelete;
     setDeleteLoading(id);
 
     try {
@@ -276,14 +288,10 @@ export default function OrdersTable({
 
       toast.success(data.message || "Order deleted successfully");
 
-      // Remove from local state
       setOrders((prev) => prev.filter((order) => order.id !== id));
-
-      // If the deleted order was expanded, close it
       if (expandedOrder === id) {
         setExpandedOrder(null);
       }
-
       closeDeleteModal();
     } catch (error: any) {
       console.error("Delete error:", error);
@@ -291,48 +299,28 @@ export default function OrdersTable({
     } finally {
       setDeleteLoading(null);
     }
-  };
+  }, [orderToDelete, expandedOrder, closeDeleteModal]);
 
-  const toggleOrderDetails = (orderId: string) => {
-    setExpandedOrder(expandedOrder === orderId ? null : orderId);
-  };
+  const toggleOrderDetails = useCallback((orderId: string) => {
+    setExpandedOrder((prev) => (prev === orderId ? null : orderId));
+  }, []);
 
   // ---------- Filtering ----------
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = useMemo(() => {
     const q = searchQuery.toLowerCase();
+    return orders.filter((order) => {
+      const matchesSearch =
+        (order.id ?? "").toLowerCase().includes(q) ||
+        (order.order_number ?? "").toLowerCase().includes(q) ||
+        (order.users?.name ?? "").toLowerCase().includes(q) ||
+        (order.users?.email ?? "").toLowerCase().includes(q) ||
+        (order.shipping_info ?? "").toLowerCase().includes(q);
 
-    const matchesSearch =
-      (order.order_number ?? "").toLowerCase().includes(q) ||
-      (order.users?.name ?? "").toLowerCase().includes(q) ||
-      (order.users?.email ?? "").toLowerCase().includes(q) ||
-      (order.shipping_info ?? "").toLowerCase().includes(q);
-
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      const matchesStatus =
+        statusFilter === "all" || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
     });
-  };
-
-  const formatFullDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
+  }, [orders, searchQuery, statusFilter]);
 
   return (
     <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
@@ -342,7 +330,7 @@ export default function OrdersTable({
           <div className="flex-1 max-w-lg">
             <input
               type="search"
-              placeholder="Search by order number, customer name, email, or shipping info..."
+              placeholder="Search by ref, order number, customer name, email, or shipping info..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -369,25 +357,25 @@ export default function OrdersTable({
 
       {/* Orders Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 text-sm md:text-base">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Order #
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Customer
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden sm:table-cell px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="hidden lg:table-cell px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -396,38 +384,44 @@ export default function OrdersTable({
             {filteredOrders.map((order) => (
               <Fragment key={order.id}>
                 <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {order.order_number}
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium text-gray-900">
+                      {order.order_number ? (
+                        `#${order.order_number}`
+                      ) : (
+                        <span className="text-gray-500">
+                          ref {order.id.slice(0, 8)}
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4">
                     <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
+                      <User className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate max-w-[120px] md:max-w-none">
                           {order.users.name}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs md:text-sm text-gray-500 truncate max-w-[120px] md:max-w-none">
                           {order.users.email}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center text-sm font-medium text-gray-900">
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center font-medium text-gray-900">
                       <DollarSign className="h-4 w-4 text-gray-400 mr-1" />
                       {order.total_price.toLocaleString("en-US")}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
                       <select
                         value={order.status}
                         onChange={(e) =>
                           handleStatusUpdate(order.id, e.target.value)
                         }
-                        className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="px-2 py-1 border rounded text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         disabled={loading === order.id}
                         data-order-id={order.id}
                       >
@@ -444,10 +438,10 @@ export default function OrdersTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="hidden lg:table-cell px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
                     {formatDate(order.created_at)}
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium">
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium">
                     <div className="flex items-center space-x-3">
                       <button
                         onClick={() => toggleOrderDetails(order.id)}
@@ -456,12 +450,12 @@ export default function OrdersTable({
                         {expandedOrder === order.id ? (
                           <>
                             <EyeOff className="h-4 w-4 mr-1" />
-                            Hide
+                            <span className="hidden xs:inline">Hide</span>
                           </>
                         ) : (
                           <>
                             <Eye className="h-4 w-4 mr-1" />
-                            Details
+                            <span className="hidden xs:inline">Details</span>
                           </>
                         )}
                       </button>
@@ -485,21 +479,21 @@ export default function OrdersTable({
                 {/* Expanded Order Details */}
                 {expandedOrder === order.id && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 bg-gray-50">
-                      <div className="border rounded-lg bg-white p-6">
+                    <td colSpan={6} className="px-4 md:px-6 py-4 bg-gray-50">
+                      <div className="border rounded-lg bg-white p-4 md:p-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {/* Customer Information */}
                           <div>
-                            <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-4 flex items-center">
                               <User className="h-5 w-5 mr-2" />
                               Customer Information
                             </h4>
-                            <div className="space-y-3 text-sm">
+                            <div className="space-y-3 text-xs md:text-sm">
                               <div>
                                 <div className="font-medium text-gray-700">
                                   Name
                                 </div>
-                                <div className="text-gray-900">
+                                <div className="text-gray-900 break-words">
                                   {order.users.name}
                                 </div>
                               </div>
@@ -507,7 +501,7 @@ export default function OrdersTable({
                                 <div className="font-medium text-gray-700">
                                   Email
                                 </div>
-                                <div className="text-gray-900">
+                                <div className="text-gray-900 break-words">
                                   {order.users.email}
                                 </div>
                               </div>
@@ -516,7 +510,7 @@ export default function OrdersTable({
                                   <div className="font-medium text-gray-700">
                                     Phone
                                   </div>
-                                  <div className="text-gray-900">
+                                  <div className="text-gray-900 break-words">
                                     {order.users.phone}
                                   </div>
                                 </div>
@@ -526,7 +520,7 @@ export default function OrdersTable({
                                   <div className="font-medium text-gray-700">
                                     Address
                                   </div>
-                                  <div className="text-gray-900 whitespace-pre-line">
+                                  <div className="text-gray-900 whitespace-pre-line break-words">
                                     {order.users.address}
                                   </div>
                                 </div>
@@ -536,15 +530,15 @@ export default function OrdersTable({
 
                           {/* Shipping Information */}
                           <div>
-                            <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-4 flex items-center">
                               <Package className="h-5 w-5 mr-2" />
                               Shipping Information
                             </h4>
-                            <div className="text-sm">
+                            <div className="text-xs md:text-sm">
                               <div className="font-medium text-gray-700 mb-2">
                                 Shipping Address
                               </div>
-                              <div className="text-gray-900 whitespace-pre-line">
+                              <div className="text-gray-900 whitespace-pre-line break-words">
                                 {order.shipping_info}
                               </div>
                               <div className="mt-4 pt-4 border-t">
@@ -575,17 +569,17 @@ export default function OrdersTable({
 
                           {/* Order Items */}
                           <div className="md:col-span-2">
-                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
                               Order Items
                             </h4>
                             <div className="space-y-4">
                               {order.order_items.map((item) => (
                                 <div
                                   key={item.id}
-                                  className="flex items-center justify-between border rounded-lg p-4"
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-4 gap-4"
                                 >
-                                  <div className="flex items-center">
-                                    <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center mr-4">
+                                  <div className="flex items-center flex-1 min-w-0">
+                                    <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                                       {item.products.images &&
                                       item.products.images.length > 0 ? (
                                         <img
@@ -597,20 +591,31 @@ export default function OrdersTable({
                                         <Package className="h-8 w-8 text-gray-400" />
                                       )}
                                     </div>
-                                    <div>
-                                      <div className="font-medium text-gray-900">
-                                        {item.products.title}
-                                      </div>
+                                    <div className="min-w-0">
+                                      {item.products.link ? (
+                                        <a
+                                          href={item.products.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="font-medium text-gray-900 truncate hover:underline"
+                                        >
+                                          {item.products.title}
+                                        </a>
+                                      ) : (
+                                        <div className="font-medium text-gray-900 truncate">
+                                          {item.products.title}
+                                        </div>
+                                      )}
                                       {item.product_variants && (
-                                        <div className="mt-1 text-sm text-gray-500">
+                                        <div className="mt-1 text-xs md:text-sm text-gray-500 flex flex-wrap gap-x-3">
                                           {item.product_variants.color && (
-                                            <span className="mr-3">
+                                            <span>
                                               Color:{" "}
                                               {item.product_variants.color}
                                             </span>
                                           )}
                                           {item.product_variants.size && (
-                                            <span className="mr-3">
+                                            <span>
                                               Size: {item.product_variants.size}
                                             </span>
                                           )}
@@ -621,20 +626,20 @@ export default function OrdersTable({
                                           )}
                                         </div>
                                       )}
-                                      <div className="mt-1 text-sm text-gray-600">
+                                      <div className="mt-1 text-xs md:text-sm text-gray-600">
                                         Quantity: {item.quantity}
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <div className="text-lg font-bold text-gray-900">
-                                      Br
+                                  <div className="text-right sm:text-left sm:ml-auto">
+                                    <div className="text-base md:text-lg font-bold text-gray-900">
+                                      Br{" "}
                                       {(
                                         item.price * item.quantity
                                       ).toLocaleString("en-US")}
                                     </div>
-                                    <div className="text-sm text-gray-500">
-                                      Br{item.price.toLocaleString("en-US")}{" "}
+                                    <div className="text-xs md:text-sm text-gray-500">
+                                      Br {item.price.toLocaleString("en-US")}{" "}
                                       each
                                     </div>
                                   </div>
@@ -644,19 +649,19 @@ export default function OrdersTable({
 
                             {/* Order Summary */}
                             <div className="mt-6 border-t pt-6">
-                              <div className="flex justify-between items-center">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                  <div className="text-sm text-gray-600">
+                                  <div className="text-xs md:text-sm text-gray-600">
                                     Total
                                   </div>
-                                  <div className="text-2xl font-bold text-gray-900">
-                                    Br
+                                  <div className="text-xl md:text-2xl font-bold text-gray-900">
+                                    Br{" "}
                                     {order.total_price.toLocaleString("en-US")}
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <div
-                                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs md:text-sm font-medium ${getStatusColor(order.status)}`}
                                   >
                                     {getStatusIcon(order.status)}
                                     <span className="ml-2 capitalize">
@@ -691,7 +696,7 @@ export default function OrdersTable({
 
       {/* Summary */}
       <div className="p-4 border-t bg-gray-50">
-        <div className="text-sm text-gray-600">
+        <div className="text-xs md:text-sm text-gray-600">
           Showing {filteredOrders.length} of {orders.length} orders
         </div>
       </div>
@@ -702,9 +707,14 @@ export default function OrdersTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Order</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete order #
-              {orderToDelete?.orderNumber}? This action cannot be undone. All
-              associated order items will also be deleted.
+              Are you sure you want to delete order{" "}
+              {orderToDelete
+                ? orderToDelete.orderNumber
+                  ? `#${orderToDelete.orderNumber}`
+                  : `ref ${orderToDelete.id.slice(0, 8)}`
+                : ""}
+              ? This action cannot be undone. All associated order items will
+              also be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

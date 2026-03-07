@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/supabaseServer";
 import { sendOrderConfirmedEmail } from "@/lib/email";
 
+// api/admin/orders/[id]/route.ts
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -185,10 +186,14 @@ export async function DELETE(
       )
     }
 
+    const orderRef = existingOrder.order_number 
+    ? `#${existingOrder.order_number}` 
+    : `ref ${existingOrder.id.slice(0, 8)}`;
+
     return NextResponse.json({
       success: true,
-      message: `Order #${existingOrder.order_number} deleted successfully`,
-    }, { status: 200 })
+      message: `Order ${orderRef} deleted successfully`,
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error('Unexpected error in order deletion:', error)
