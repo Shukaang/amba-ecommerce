@@ -65,7 +65,16 @@ export default function Footer() {
     fetchCategoryIds();
   }, []);
 
-  if (["/login", "/register"].includes(pathname)) return null;
+  if (
+    [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/verify-otp",
+      "/reset-password",
+    ].includes(pathname)
+  )
+    return null;
   if (pathname.startsWith("/admin")) return null;
 
   return (

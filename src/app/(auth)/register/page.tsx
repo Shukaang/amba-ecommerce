@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
 import Header from "@/components/auth/header";
 import Footer from "@/components/auth/footer";
-import { registerSchema } from "@/lib/auth/schemas";
+import { registerClientSchema } from "@/lib/auth/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +56,6 @@ function FooterSkeleton() {
 }
 
 export default function RegisterPage() {
-  // ... (keep all your existing state and handlers)
   const router = useRouter();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
@@ -90,7 +89,7 @@ export default function RegisterPage() {
     setErrors({});
     setGeneralError("");
 
-    const result = registerSchema.safeParse(formData);
+    const result = registerClientSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((err) => {
@@ -125,14 +124,16 @@ export default function RegisterPage() {
         <Header />
       </Suspense>
       <main className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md shadow-xl border-0">
+        <Card className="w-full max-w-md shadow-xl border-0 bg-white">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-[#f73a00] rounded-full flex items-center justify-center text-white text-2xl font-bold">
                 AS
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold">Create account</CardTitle>
+            <CardTitle className="text-3xl text-gray-900 font-bold">
+              Create account
+            </CardTitle>
             <CardDescription className="text-base text-gray-600">
               Join AmbaStore to start shopping.
             </CardDescription>
@@ -147,7 +148,9 @@ export default function RegisterPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="name">FULL NAME</Label>
+                <Label htmlFor="name" className="text-gray-700">
+                  FULL NAME
+                </Label>
                 <Input
                   id="name"
                   name="name"
@@ -155,7 +158,11 @@ export default function RegisterPage() {
                   placeholder="John Doe"
                   value={formData.name}
                   onChange={handleChange}
-                  className={errors.name ? "border-red-500" : ""}
+                  className={
+                    errors.name
+                      ? "border-red-500"
+                      : "border-gray-300 text-gray-900"
+                  }
                 />
                 {errors.name && (
                   <p className="text-xs text-red-500 mt-1">{errors.name}</p>
@@ -163,7 +170,9 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">EMAIL ADDRESS</Label>
+                <Label htmlFor="email" className="text-gray-700">
+                  EMAIL ADDRESS
+                </Label>
                 <Input
                   id="email"
                   name="email"
@@ -171,7 +180,11 @@ export default function RegisterPage() {
                   placeholder="name@company.com"
                   value={formData.email}
                   onChange={handleChange}
-                  className={errors.email ? "border-red-500" : ""}
+                  className={
+                    errors.email
+                      ? "border-red-500"
+                      : "border-gray-300 text-gray-900"
+                  }
                 />
                 {errors.email && (
                   <p className="text-xs text-red-500 mt-1">{errors.email}</p>
@@ -179,7 +192,9 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">PASSWORD</Label>
+                <Label htmlFor="password" className="text-gray-700">
+                  PASSWORD
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -189,7 +204,9 @@ export default function RegisterPage() {
                     value={formData.password}
                     onChange={handleChange}
                     className={
-                      errors.password ? "border-red-500 pr-10" : "pr-10"
+                      errors.password
+                        ? "border-red-500 pr-10"
+                        : "border-gray-300 pr-10 text-gray-900"
                     }
                   />
                   <button
@@ -214,7 +231,9 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">CONFIRM PASSWORD</Label>
+                <Label htmlFor="confirmPassword" className="text-gray-700">
+                  CONFIRM PASSWORD
+                </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -224,7 +243,9 @@ export default function RegisterPage() {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     className={
-                      errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"
+                      errors.confirmPassword
+                        ? "border-red-500 pr-10"
+                        : "border-gray-300 pr-10 text-gray-900"
                     }
                   />
                   <button
@@ -247,7 +268,9 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">PHONE NUMBER (OPTIONAL)</Label>
+                <Label htmlFor="phone" className="text-gray-700">
+                  PHONE NUMBER (OPTIONAL)
+                </Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -255,7 +278,11 @@ export default function RegisterPage() {
                   placeholder="+251 912 345 678"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={errors.phone ? "border-red-500" : ""}
+                  className={
+                    errors.phone
+                      ? "border-red-500"
+                      : "border-gray-300 text-gray-900"
+                  }
                 />
                 {errors.phone && (
                   <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
@@ -263,14 +290,20 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">ADDRESS (OPTIONAL)</Label>
+                <Label htmlFor="address" className="text-gray-700">
+                  ADDRESS (OPTIONAL)
+                </Label>
                 <Input
                   id="address"
                   name="address"
                   placeholder="Addis Ababa, Ethiopia"
                   value={formData.address}
                   onChange={handleChange}
-                  className={errors.address ? "border-red-500" : ""}
+                  className={
+                    errors.address
+                      ? "border-red-500"
+                      : "border-gray-300 text-gray-900"
+                  }
                 />
                 {errors.address && (
                   <p className="text-xs text-red-500 mt-1">{errors.address}</p>

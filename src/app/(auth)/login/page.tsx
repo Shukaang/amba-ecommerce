@@ -23,7 +23,7 @@ import { loginSchema } from "@/lib/auth/schemas";
 
 export const dynamic = "force-dynamic";
 
-// Skeleton components (same as above, or import from a shared file)
+// Skeleton components (unchanged)
 function HeaderSkeleton() {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -101,14 +101,16 @@ function LoginContent() {
 
   return (
     <main className="min-h-[calc(100vh-200px)] flex items-center justify-center bg-gradient-to-b from-gray-100 to-white py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md shadow-xl border-0">
+      <Card className="w-full max-w-md shadow-xl border-0 bg-white">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-[#f73a00] rounded-full flex items-center justify-center text-white text-2xl font-bold">
               AS
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold">Welcome back</CardTitle>
+          <CardTitle className="text-3xl text-gray-900 font-bold">
+            Welcome back
+          </CardTitle>
           <CardDescription className="text-base text-gray-600">
             Access the world's finest fashion collections.
           </CardDescription>
@@ -123,14 +125,16 @@ function LoginContent() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">EMAIL ADDRESS</Label>
+              <Label htmlFor="email" className="text-gray-700">
+                EMAIL ADDRESS
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={errors.email ? "border-red-500" : ""}
+                className={errors.email ? "border-red-500" : "border-gray-300"}
               />
               {errors.email && (
                 <p className="text-xs text-red-500 mt-1">{errors.email}</p>
@@ -138,7 +142,17 @@ function LoginContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">PASSWORD</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-gray-700">
+                  PASSWORD
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-[#f73a00] hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -146,7 +160,11 @@ function LoginContent() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                  className={
+                    errors.password
+                      ? "border-red-500 pr-10"
+                      : "border-gray-300 pr-10"
+                  }
                 />
                 <button
                   type="button"
@@ -167,7 +185,11 @@ function LoginContent() {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+              disabled={loading}
+            >
               {loading ? "Signing in..." : "Sign In to AmbaStore"}
             </Button>
 

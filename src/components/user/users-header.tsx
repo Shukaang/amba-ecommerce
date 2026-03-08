@@ -222,7 +222,16 @@ export default function UserHeader() {
     setActiveMainCategory(null);
   };
 
-  if (["/login", "/register"].includes(pathname)) return null;
+  if (
+    [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/verify-otp",
+      "/reset-password",
+    ].includes(pathname)
+  )
+    return null;
   if (pathname.startsWith("/admin")) return null;
 
   // Show loading skeleton while auth is loading
@@ -504,17 +513,6 @@ export default function UserHeader() {
                         My Orders
                       </Link>
                     </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      asChild
-                      className="cursor-pointer hover:bg-gray-100 focus:bg-gray-100"
-                    >
-                      <Link href="/settings" className="text-gray-700">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                      </Link>
-                    </DropdownMenuItem>
-
                     {["ADMIN", "SUPERADMIN"].includes(user.role) && (
                       <>
                         <DropdownMenuSeparator className="bg-gray-200" />

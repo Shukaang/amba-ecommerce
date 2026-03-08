@@ -21,3 +21,20 @@ export function decodeToken(token: string): any {
     return null;
   }
 }
+
+// Reset password token functions (short-lived, with purpose)
+export function createResetToken(userId: string): string {
+  return jwt.sign({ id: userId, purpose: "reset_password" }, JWT_SECRET, {
+    expiresIn: "10m",
+  });
+}
+
+export function verifyResetToken(token: string): { id: string } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (decoded.purpose !== "reset_password") return null;
+    return { id: decoded.id };
+  } catch (error) {
+    return null;
+  }
+}

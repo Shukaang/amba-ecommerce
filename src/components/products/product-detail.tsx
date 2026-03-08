@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
 import {
@@ -21,11 +21,14 @@ import {
   RotateCcw,
   Loader2,
   ArrowLeft,
+  Info,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -103,6 +106,7 @@ export default function ProductDetailClient({
   const router = useRouter();
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const pathname = usePathname();
 
   // Product state
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
@@ -190,20 +194,17 @@ export default function ProductDetailClient({
     const animationEl = document.createElement("div");
     animationEl.className = "fixed z-[100] pointer-events-none";
     animationEl.innerHTML = `
-    <div class="flex items-center justify-center h-10 w-10 rounded-full bg-[#f73a00] text-white shadow-lg">
-      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-    </div>
-  `;
+      <div class="flex items-center justify-center h-10 w-10 rounded-full bg-[#f73a00] text-white shadow-lg">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+      </div>
+    `;
 
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
-
     const cartIcon = document.querySelector(
       'a[href="/cart"]',
     ) as HTMLElement | null;
-
-    // 🔥 ALWAYS RETURN A REAL DOMRect
     const endRect: DOMRect = cartIcon
       ? cartIcon.getBoundingClientRect()
       : new DOMRect(window.innerWidth - 100, 80, 40, 40);
@@ -402,48 +403,57 @@ export default function ProductDetailClient({
     );
   };
 
+  // Split description into list items
+  const descriptionItems = product.description
+    .split("\n")
+    .filter((line) => line.trim() !== "");
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-gray-600 mb-8">
-          <Link href="/" className="hover:text-[#f73a00] transition-colors">
+        <nav className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8 overflow-x-auto pb-2">
+          <Link
+            href="/"
+            className="hover:text-[#f73a00] whitespace-nowrap transition-colors"
+          >
             Home
           </Link>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
           <Link
             href="/products"
-            className="hover:text-[#f73a00] transition-colors"
+            className="hover:text-[#f73a00] whitespace-nowrap transition-colors"
           >
             Products
           </Link>
           {product.categories && (
             <>
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
               <Link
                 href={`/products?category=${product.categories.id}`}
-                className="hover:text-[#f73a00] transition-colors"
+                className="hover:text-[#f73a00] whitespace-nowrap transition-colors"
               >
                 {product.categories.title}
               </Link>
             </>
           )}
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
           <span className="text-gray-900 font-medium truncate">
             {product.title}
           </span>
         </nav>
 
         {/* Main product section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Left: Image gallery with vertical thumbnails */}
-          <div className="flex flex-col-reverse lg:flex-row gap-4">
-            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
+          {/* Left: Image gallery with thumbnails on the left on desktop */}
+          <div className="flex flex-col lg:flex-row lg:gap-4">
+            {/* Thumbnails - horizontal on mobile, vertical on desktop */}
+            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px] order-2 lg:order-1">
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                  className={`shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all ${
                     selectedImage === idx
                       ? "border-[#f73a00]"
                       : "border-transparent hover:border-gray-300"
@@ -457,19 +467,19 @@ export default function ProductDetailClient({
                 </button>
               ))}
             </div>
-            <div className="relative flex-1">
-              {/* Back button positioned at the top of the image */}
+
+            {/* Main image */}
+            <div className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden lg:flex-1 order-1 lg:order-2">
               <button
                 onClick={() => router.back()}
-                className="absolute top-4 left-4 z-10 p-2.5 rounded-full bg-white/90 hover:bg-white shadow-lg backdrop-blur-sm transition-all group"
+                className="absolute top-3 left-3 z-10 p-2 rounded-full bg-white/90 hover:bg-white shadow-md backdrop-blur-sm transition-all group"
                 aria-label="Go back"
               >
-                <ArrowLeft className="h-5 w-5 text-gray-700 group-hover:text-[#f73a00] transition-colors" />
+                <ArrowLeft className="h-4 w-4 text-gray-700 group-hover:text-[#f73a00]" />
               </button>
-
               <div
                 ref={imageRef}
-                className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-zoom-in"
+                className="w-full h-full cursor-zoom-in"
                 onMouseEnter={() => setIsImageZoomed(true)}
                 onMouseLeave={() => setIsImageZoomed(false)}
                 onMouseMove={handleMouseMove}
@@ -495,35 +505,25 @@ export default function ProductDetailClient({
           {/* Right: Product info */}
           <div className="space-y-4">
             <div>
-              <h1 className="text-xl lg:text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                 {product.title}
               </h1>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {renderStars(averageRating, false, "lg")}
-                    </div>
-                    <span className="text-lg font-semibold text-gray-900">
-                      {averageRating.toFixed(1)}
-                    </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex">
+                    {renderStars(averageRating, false, "lg")}
                   </div>
-                  <span className="text-gray-500">
-                    ({ratings.length}{" "}
-                    {ratings.length === 1 ? "review" : "reviews"})
+                  <span className="text-base font-semibold text-gray-900">
+                    {averageRating.toFixed(1)}
                   </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <button
                     onClick={() => setIsWishlisted(!isWishlisted)}
-                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all group"
+                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
                   >
                     <Heart
-                      className={`h-5 w-5 transition-colors ${
-                        isWishlisted
-                          ? "fill-[#f73a00] text-[#f73a00]"
-                          : "text-gray-600 group-hover:text-[#f73a00]"
-                      }`}
+                      className={`h-5 w-5 ${isWishlisted ? "fill-[#f73a00] text-[#f73a00]" : "text-gray-600"}`}
                     />
                   </button>
                   <button
@@ -539,17 +539,17 @@ export default function ProductDetailClient({
                           toast.success("Link copied to clipboard!");
                         });
                     }}
-                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all group"
+                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
                   >
-                    <Share2 className="h-5 w-5 text-gray-600 group-hover:text-[#f73a00]" />
+                    <Share2 className="h-5 w-5 text-gray-600" />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="border-y border-gray-200 py-6">
-              <div className="flex items-baseline gap-3">
-                <span className="text-xl font-bold text-gray-900">
+            <div className="border-y border-gray-200 py-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                   Br{getDisplayPrice().toLocaleString("en-US")}
                 </span>
                 {product.product_variants.length > 0 && (
@@ -562,10 +562,10 @@ export default function ProductDetailClient({
 
             {product.product_variants.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">
                   Available Variants
                 </h3>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {product.product_variants.map((variant) => {
                     const isSelected = selectedVariant?.id === variant.id;
                     const variantName = [
@@ -579,15 +579,15 @@ export default function ProductDetailClient({
                       <button
                         key={variant.id}
                         onClick={() => setSelectedVariant(variant)}
-                        className={`p-1 border-2 rounded-xl text-left transition-all ${
+                        className={`p-1 border-2 rounded-lg text-left transition-all ${
                           isSelected
                             ? "border-[#f73a00] bg-orange-50"
                             : "border-gray-200 hover:border-orange-200"
                         }`}
                       >
-                        <div className="flex items-baseline justify-between">
+                        <div className="flex items-start justify-between">
                           <div>
-                            <div className="font-medium text-gray-900">
+                            <div className="font-medium text-sm text-gray-900">
                               {variantName || "Standard"}
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
@@ -595,7 +595,7 @@ export default function ProductDetailClient({
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="h-5 w-5 text-[#f73a00]" />
+                            <Check className="h-4 w-4 text-[#f73a00] ml-auto mt-1" />
                           )}
                         </div>
                       </button>
@@ -606,23 +606,23 @@ export default function ProductDetailClient({
             )}
 
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">
                 Quantity
               </h3>
               <div className="flex items-center gap-4">
-                <div className="flex items-center border-2 border-gray-200 rounded-xl">
+                <div className="flex items-center border-2 border-gray-200 rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-2 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
+                    className="px-3 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
                   >
                     -
                   </button>
-                  <span className="px-2 py-2 text-gray-900 font-medium min-w-[60px] text-center">
+                  <span className="px-3 py-2 text-gray-900 font-medium min-w-[50px] text-center">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-2 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
+                    className="px-3 py-2 text-gray-600 hover:text-[#f73a00] transition-colors"
                   >
                     +
                   </button>
@@ -634,190 +634,215 @@ export default function ProductDetailClient({
               </div>
             </div>
 
-            <Button
-              id="add-to-cart-btn"
-              onClick={handleAddToCart}
-              className="w-full py-6 text-lg bg-gradient-to-r from-[#f73a00] to-[#f73a00] hover:from-[#f73a00] hover:to-orange-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all"
-              size="lg"
-              disabled={product.product_variants.length > 0 && !selectedVariant}
-            >
-              <ShoppingCart className="mr-2 h-5 w-5" />
-              Add to Cart
-            </Button>
+            <div className="sticky bottom-4 z-10 lg:static lg:bottom-auto">
+              <Button
+                id="add-to-cart-btn"
+                onClick={handleAddToCart}
+                className="w-full py-5 text-base sm:text-lg bg-gradient-to-r from-[#f73a00] to-[#f73a00] hover:from-[#f73a00] hover:to-orange-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all"
+                size="lg"
+                disabled={
+                  product.product_variants.length > 0 && !selectedVariant
+                }
+              >
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Add to Cart
+              </Button>
+            </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-6">
-              <div className="text-center">
-                <Truck className="h-6 w-6 mx-auto mb-2 text-[#f73a00]" />
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <Truck className="h-5 w-5 mx-auto mb-1 text-[#f73a00]" />
                 <p className="text-xs text-gray-600">Free Shipping</p>
               </div>
-              <div className="text-center">
-                <RotateCcw className="h-6 w-6 mx-auto mb-2 text-[#f73a00]" />
-                <p className="text-xs text-gray-600">Returns</p>
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <RotateCcw className="h-5 w-5 mx-auto mb-1 text-[#f73a00]" />
+                <p className="text-xs text-gray-600">Return Available</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Description Section */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Description</h2>
-          <div className="prose prose-lg max-w-none">
-            <p className="text-gray-600 whitespace-pre-line leading-relaxed">
-              {product.description}
-            </p>
-          </div>
-        </div>
+        {/* Tabs for Description and Reviews */}
+        <div className="mt-8">
+          <Tabs defaultValue="description" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 p-1 rounded-lg">
+              <TabsTrigger
+                value="description"
+                className="text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-white data-[state=active]:text-[#f73a00] dark:data-[state=active]:text-[#f73a00] data-[state=active]:shadow-sm rounded-md transition-all"
+              >
+                <Info className="h-4 w-4 mr-2" />
+                Description
+              </TabsTrigger>
+              <TabsTrigger
+                value="reviews"
+                className="text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-white data-[state=active]:text-[#f73a00] dark:data-[state=active]:text-[#f73a00] data-[state=active]:shadow-sm rounded-md transition-all"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Reviews
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Ratings Section - Two columns */}
-        <div className="mt-16">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Users className="h-6 w-6 text-[#f73a00]" />
-              Customer Reviews
-            </h2>
-            {/* Write Review button (for logged-in users without a rating) */}
-            {user && !userRating && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#f73a00] hover:bg-[#f73a00]/90">
-                    Write a Review
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">
-                      Write a Review
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-6 py-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-3">
-                        Your Rating <span className="text-[#f73a00]">*</span>
-                      </label>
-                      {renderStars(selectedRating, true, "lg")}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-3">
-                        Your Review (Optional)
-                      </label>
-                      <Textarea
-                        value={reviewText}
-                        onChange={(e) => setReviewText(e.target.value)}
-                        placeholder="Share your thoughts..."
-                        maxLength={500}
-                        rows={4}
-                        className="resize-none rounded-xl"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">
-                        {reviewText.length}/500 characters
-                      </p>
-                    </div>
-                    <div className="flex justify-end gap-3">
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="rounded-xl">
-                          Cancel
-                        </Button>
-                      </DialogTrigger>
-                      <Button
-                        onClick={handleSubmitRating}
-                        disabled={isSubmitting || selectedRating === 0}
-                        className="bg-gradient-to-r from-[#f73a00] to-[#f73a00] hover:from-[#f73a00] hover:to-orange-700 text-white rounded-xl"
+            <TabsContent value="description" className="space-y-4">
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                {descriptionItems.length > 0 ? (
+                  <ul className="list-disc pl-5 space-y-2 text-gray-600">
+                    {descriptionItems.map((item, idx) => (
+                      <li
+                        key={idx}
+                        className="text-sm sm:text-base leading-relaxed"
                       >
-                        {isSubmitting ? "Submitting..." : "Submit Review"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    {product.description}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
 
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left column – rating summary and filters */}
-            <div className="lg:w-1/3 space-y-4">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <span className="text-5xl font-bold text-gray-900">
+            <TabsContent value="reviews" className="space-y-4">
+              {/* Rating summary - without review count */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl font-bold text-gray-900">
                     {averageRating.toFixed(1)}
                   </span>
-                  <div className="space-y-1">
+                  <div>
                     <div className="flex">
                       {renderStars(averageRating, false, "lg")}
                     </div>
-                    <p className="text-sm text-gray-500">
-                      Based on {ratings.length} reviews
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Average rating</p>
                   </div>
                 </div>
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    onClick={() => setRatingFilter("recent")}
+                    className={`text-xs ${
+                      ratingFilter === "recent"
+                        ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    }`}
+                  >
+                    Recent
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setRatingFilter("highest")}
+                    className={`text-xs ${
+                      ratingFilter === "highest"
+                        ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    }`}
+                  >
+                    Highest Rated
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => setRatingFilter("recent")}
-                  className={
-                    ratingFilter === "recent"
-                      ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
-                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  }
-                >
-                  Recent
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setRatingFilter("highest")}
-                  className={
-                    ratingFilter === "highest"
-                      ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
-                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  }
-                >
-                  Highest Rated
-                </Button>
-              </div>
-            </div>
 
-            {/* Right column – user rating (if exists) + reviews list */}
-            <div className="lg:w-2/3 space-y-6">
-              {/* User's own rating with edit/delete */}
+              {/* Write review / sign-in prompt */}
+              {!user ? (
+                <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                  <p className="text-gray-600 text-sm mb-2">
+                    Sign in to write a review
+                  </p>
+                  <Link
+                    href={`/login?redirectTo=${encodeURIComponent(pathname)}`}
+                  >
+                    <Button
+                      size="sm"
+                      className="bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                </div>
+              ) : !userRating ? (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full text-white bg-[#f73a00] hover:bg-[#f73a00]/90 text-sm">
+                      Write a Review
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Write a Review</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Your Rating *
+                        </label>
+                        {renderStars(selectedRating, true, "lg")}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Your Review (Optional)
+                        </label>
+                        <Textarea
+                          value={reviewText}
+                          onChange={(e) => setReviewText(e.target.value)}
+                          placeholder="Share your thoughts..."
+                          maxLength={500}
+                          rows={4}
+                          className="resize-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {reviewText.length}/500
+                        </p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            Cancel
+                          </Button>
+                        </DialogTrigger>
+                        <Button
+                          onClick={handleSubmitRating}
+                          disabled={isSubmitting || selectedRating === 0}
+                          size="sm"
+                          className="bg-[#f73a00] hover:bg-[#f73a00]/90"
+                        >
+                          {isSubmitting ? "Submitting..." : "Submit"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              ) : null}
+
+              {/* User's own review */}
               {userRating && (
-                <div className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Your Review
-                    </h3>
-                    <div className="flex gap-2">
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-semibold text-gray-900">Your Review</h4>
+                    <div className="flex gap-1">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="text-[#f73a00] border-[#fc8b69] hover:bg-[#ff825c]"
-                            onClick={() => {
-                              setEditingRating(userRating);
-                              setSelectedRating(userRating.rating);
-                              setReviewText(userRating.review || "");
-                            }}
+                            className="h-8 px-2"
                           >
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            Edit
+                            <Edit2 className="h-3 w-3" />
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md">
                           <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">
-                              Edit Your Review
-                            </DialogTitle>
+                            <DialogTitle>Edit Your Review</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-6 py-4">
+                          <div className="space-y-4 py-2">
                             <div>
-                              <label className="block text-sm font-medium mb-3">
-                                Your Rating{" "}
-                                <span className="text-[#f73a00]">*</span>
+                              <label className="block text-sm font-medium mb-2">
+                                Your Rating *
                               </label>
                               {renderStars(selectedRating, true, "lg")}
                             </div>
                             <div>
-                              <label className="block text-sm font-medium mb-3">
+                              <label className="block text-sm font-medium mb-2">
                                 Your Review
                               </label>
                               <Textarea
@@ -825,12 +850,13 @@ export default function ProductDetailClient({
                                 onChange={(e) => setReviewText(e.target.value)}
                                 maxLength={500}
                                 rows={4}
-                                className="resize-none rounded-xl"
+                                className="resize-none"
                               />
                             </div>
-                            <div className="flex justify-end gap-3">
+                            <div className="flex justify-end gap-2">
                               <Button
                                 variant="outline"
+                                size="sm"
                                 onClick={() => setEditingRating(null)}
                               >
                                 Cancel
@@ -838,6 +864,7 @@ export default function ProductDetailClient({
                               <Button
                                 onClick={handleUpdateRating}
                                 disabled={isSubmitting || selectedRating === 0}
+                                size="sm"
                                 className="bg-[#f73a00] hover:bg-[#f73a00]/90"
                               >
                                 {isSubmitting ? "Updating..." : "Update"}
@@ -848,94 +875,102 @@ export default function ProductDetailClient({
                       </Dialog>
                       <Button
                         size="sm"
+                        variant="ghost"
                         onClick={() => setDeletingRating(userRating)}
-                        className="rounded-lg text-white bg-red-600"
+                        className="h-8 px-2 text-red-600"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     {renderStars(userRating.rating, false, "lg")}
                     {!userRating.moderated && (
                       <Badge
                         variant="outline"
-                        className="text-[#f73a00] border-[#f73a00]"
+                        className="text-[#f73a00] border-[#f73a00] text-xs"
                       >
-                        Pending Moderation
+                        Pending
                       </Badge>
                     )}
                   </div>
                   {userRating.review && (
-                    <p className="text-gray-700">{userRating.review}</p>
+                    <p className="text-sm text-gray-700">{userRating.review}</p>
                   )}
                 </div>
               )}
 
               {/* All reviews */}
               {loadingRatings ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#f73a00]" />
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#f73a00]" />
                 </div>
               ) : sortedRatings.length > 0 ? (
-                sortedRatings.map((rating) => (
-                  <div
-                    key={rating.id}
-                    className="p-6 border border-gray-200 rounded-2xl"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 ring-2 ring-[#f73a00]/20">
-                          <AvatarFallback className="bg-[#f73a00] text-white">
-                            {getUserInitials(rating.users.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {rating.users.name}
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Clock className="h-3 w-3" />
-                            {formatDistanceToNow(new Date(rating.created_at), {
-                              addSuffix: true,
-                            })}
+                <div className="space-y-4">
+                  {sortedRatings.map((rating) => (
+                    <div
+                      key={rating.id}
+                      className="p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-[#f73a00] text-white text-xs">
+                              {getUserInitials(rating.users.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">
+                              {rating.users.name}
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(
+                                new Date(rating.created_at),
+                                { addSuffix: true },
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <div className="flex">
+                          {renderStars(rating.rating, false, "lg")}
+                        </div>
                       </div>
-                      {renderStars(rating.rating, false, "lg")}
+                      {rating.review && (
+                        <p className="text-sm text-gray-700 mt-1">
+                          {rating.review}
+                        </p>
+                      )}
                     </div>
-                    {rating.review && (
-                      <p className="text-gray-700">{rating.review}</p>
-                    )}
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <p className="text-gray-500">
+                <p className="text-center text-gray-500 py-4">
                   No reviews yet. Be the first to review!
                 </p>
               )}
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* You May Also Like Section */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <div className="mt-12">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
             You May Also Like
           </h2>
           {loadingRecommended ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#f73a00]" />
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-[#f73a00]" />
             </div>
           ) : recommended.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {recommended.map((rec) => (
                 <Link
                   key={rec.id}
                   href={`/products/${rec.slug}`}
                   className="group"
                 >
-                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all h-full">
+                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all h-full">
                     <div className="aspect-square bg-gray-100">
                       <img
                         src={rec.images[0] || "/placeholder.jpg"}
@@ -943,12 +978,12 @@ export default function ProductDetailClient({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
-                    <div className="p-3">
-                      <h3 className="font-semibold text-gray-900 text-sm truncate">
+                    <div className="p-2">
+                      <h3 className="font-medium text-gray-900 text-sm truncate">
                         {rec.title}
                       </h3>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-base font-bold text-[#f73a00]">
+                        <span className="text-sm font-bold text-[#f73a00]">
                           Br{rec.price.toLocaleString("en-US")}
                         </span>
                         <div className="flex items-center gap-1">
@@ -964,7 +999,9 @@ export default function ProductDetailClient({
               ))}
             </div>
           ) : (
-            <p className="text-gray-500">No recommendations available.</p>
+            <p className="text-gray-500 text-sm">
+              No recommendations available.
+            </p>
           )}
         </div>
 

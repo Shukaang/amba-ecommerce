@@ -258,13 +258,13 @@ export default function PremiumProductCard({
         </div>
 
         {/* Product Info */}
-        <div className="py-4 px-2 flex-1">
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-[#f73a00] transition-colors">
+        <div className="py-2 px-2 flex-1">
+          <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-[#f73a00] transition-colors">
             {product.title}
           </h3>
 
           {/* Rating */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
