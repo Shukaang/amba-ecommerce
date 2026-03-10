@@ -1,6 +1,7 @@
+// components/user/footer.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,62 +10,38 @@ import {
   Instagram,
   Twitter,
   Mail,
-  MapPin,
   Phone,
-  Loader2,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/supabaseClient";
 
-export default function Footer() {
+interface FooterProps {
+  categories: { id: string; title: string }[];
+}
+
+export default function Footer({ categories }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
-  const [loading, setLoading] = useState(true);
+
+  // Compute category links from the passed categories
+  const findCategoryId = (keyword: string) => {
+    const cat = categories.find((c) => c.title.toLowerCase().includes(keyword));
+    return cat ? `/products?category=${cat.id}` : "/products";
+  };
+
+  const categoryHrefs = {
+    men: findCategoryId("men"),
+    women: findCategoryId("women"),
+    electronics: findCategoryId("electronics"),
+  };
+
+  // Dialog states
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showCookieDialog, setShowCookieDialog] = useState(false);
   const [showShippingDialog, setShowShippingDialog] = useState(false);
-  const [showRefundDialog, setShowRefundDialog] = useState(false); // new state
-  const [categoryHrefs, setCategoryHrefs] = useState({
-    men: "/products",
-    women: "/products",
-    accessories: "/products",
-  });
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
 
-  const supabase = createClient();
-
-  useEffect(() => {
-    const fetchCategoryIds = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from("categories")
-          .select("id, title")
-          .limit(20);
-
-        if (data) {
-          const findId = (keyword: string) => {
-            const cat = data.find((c) =>
-              c.title.toLowerCase().includes(keyword),
-            );
-            return cat ? `/products?category=${cat.id}` : "/products";
-          };
-
-          setCategoryHrefs({
-            men: findId("men"),
-            women: findId("women"),
-            accessories: findId("accessories"),
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching category IDs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCategoryIds();
-  }, []);
-
+  // Hide footer on auth pages and admin routes
   if (
     [
       "/login",
@@ -72,10 +49,11 @@ export default function Footer() {
       "/forgot-password",
       "/verify-otp",
       "/reset-password",
-    ].includes(pathname)
-  )
+    ].includes(pathname) ||
+    pathname.startsWith("/admin")
+  ) {
     return null;
-  if (pathname.startsWith("/admin")) return null;
+  }
 
   return (
     <>
@@ -128,64 +106,53 @@ export default function Footer() {
                 Shop
                 <span className="absolute -bottom-2 left-0 w-8 h-0.5 bg-[#f73a00]"></span>
               </h6>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="h-4 w-24 bg-white/10 rounded animate-pulse"
-                    ></div>
-                  ))}
-                </div>
-              ) : (
-                <ul className="space-y-3 text-gray-400">
-                  <li>
-                    <Link
-                      href="/products?new=true"
-                      className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                    >
-                      <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                      New Arrivals
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href={categoryHrefs.men}
-                      className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                    >
-                      <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                      Men&apos;s Collection
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href={categoryHrefs.women}
-                      className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                    >
-                      <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                      Women&apos;s Collection
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href={categoryHrefs.accessories}
-                      className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                    >
-                      <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                      Accessories
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/products?featured=true"
-                      className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                    >
-                      <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                      Best Sellers
-                    </Link>
-                  </li>
-                </ul>
-              )}
+              <ul className="space-y-3 text-gray-400">
+                <li>
+                  <Link
+                    href="/products?new=true"
+                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
+                  >
+                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
+                    New Arrivals
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={categoryHrefs.men}
+                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
+                  >
+                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
+                    Men&apos;s Collection
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={categoryHrefs.women}
+                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
+                  >
+                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
+                    Women&apos;s Collection
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={categoryHrefs.electronics}
+                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
+                  >
+                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
+                    Electronics
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/products?featured=true"
+                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
+                  >
+                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
+                    Best Sellers
+                  </Link>
+                </li>
+              </ul>
             </div>
 
             {/* Company - 2 columns */}
@@ -195,15 +162,6 @@ export default function Footer() {
                 <span className="absolute -bottom-2 left-0 w-8 h-0.5 bg-[#f73a00]"></span>
               </h6>
               <ul className="space-y-3 text-gray-400">
-                <li>
-                  <Link
-                    href="/contact"
-                    className="hover:text-white transition-colors inline-flex items-center gap-2 group"
-                  >
-                    <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
-                    Contact Us
-                  </Link>
-                </li>
                 <li>
                   <button
                     onClick={() => setShowPrivacyDialog(true)}
@@ -233,7 +191,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <button
-                    onClick={() => setShowRefundDialog(true)} // replaced Link with button
+                    onClick={() => setShowRefundDialog(true)}
                     className="hover:text-white transition-colors inline-flex items-center gap-2 group text-left w-full"
                   >
                     <span className="w-0 h-0.5 bg-[#f73a00] group-hover:w-2 transition-all"></span>
@@ -295,7 +253,7 @@ export default function Footer() {
           {/* Bottom Bar */}
           <div className="pt-8 border-t border-white/10">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-gray-500 text-sm order-2 md:order-1">
+              <p className="text-gray-400 text-sm order-2 md:order-1">
                 © {currentYear} AmbaStore Inc. All rights reserved.
               </p>
               <div className="flex gap-6 order-1 md:order-2">

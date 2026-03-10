@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
-import { sendOrderConfirmedEmail } from '@/lib/email' // <-- import the email function
+import { sendOrderConfirmedEmail } from '@/lib/email'
 
 export async function PUT(
   request: NextRequest,

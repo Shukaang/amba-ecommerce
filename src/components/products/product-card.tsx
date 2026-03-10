@@ -284,11 +284,6 @@ export default function PremiumProductCard({
               <span className="text-lg font-bold text-gray-900">
                 Br {minPrice.toLocaleString("en-US")}
               </span>
-              {hasVariants && (
-                <div className="text-xs text-gray-500">
-                  From ETB {Math.min(...variantPrices).toLocaleString("en-US")}
-                </div>
-              )}
             </div>
 
             <Button

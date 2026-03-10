@@ -46,7 +46,8 @@ export default function CategoryShowcase() {
 
       const { data: allCategories, error: catError } = await supabase
         .from("categories")
-        .select("id, title, description, image, parent_id");
+        .select("id, title, description, image, parent_id")
+        .order("title", { ascending: false });
 
       if (catError) throw catError;
 
@@ -104,7 +105,7 @@ export default function CategoryShowcase() {
 
   if (loading) {
     return (
-      <section className="py-16 bg-slate-50 dark:bg-slate-900/50">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <Skeleton className="h-8 w-48 mx-auto mb-4" />
@@ -127,12 +128,12 @@ export default function CategoryShowcase() {
 
   if (categories.length === 0) {
     return (
-      <section className="py-16 bg-slate-50 dark:bg-slate-900/50">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Shop by Category</h2>
-          <p className="text-slate-600 dark:text-slate-400 mb-8">
-            Categories coming soon!
-          </p>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">
+            Shop by Category
+          </h2>
+          <p className="text-gray-600 mb-8">Categories coming soon!</p>
         </div>
       </section>
     );
@@ -141,17 +142,17 @@ export default function CategoryShowcase() {
   const [cat1, cat2, cat3, cat4] = categories;
 
   return (
-    <section className="py-12 bg-slate-50 dark:bg-slate-900/50">
+    <section className="py-12 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#f73a00]/10 rounded-full text-[#f73a00] text-sm font-medium mb-4">
             <Tag className="h-4 w-4" />
             Shop by Category
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Curated Collections
           </h2>
-          <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Discover our thoughtfully organized categories for every lifestyle
             and occasion.
           </p>
@@ -159,22 +160,22 @@ export default function CategoryShowcase() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Left large category */}
-          {cat1 && (
+          {cat4 && (
             <Link
-              href={`/products?category=${cat1.id}`}
+              href={`/products?category=${cat4.id}`}
               className="group relative block"
             >
               <div className="relative h-[200px] md:h-[400px] rounded-lg overflow-hidden">
                 <img
-                  src={getCategoryImage(cat1)}
-                  alt={cat1.title}
+                  src={getCategoryImage(cat4)}
+                  alt={cat4.title}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white z-10">
-                  <h3 className="text-3xl font-bold mb-2">{cat1.title}</h3>
+                  <h3 className="text-3xl font-bold mb-2">{cat4.title}</h3>
                   <p className="text-white/80 text-sm mb-3 line-clamp-2">
-                    {cat1.description || "Explore our collection"}
+                    {cat4.description || "Explore our collection"}
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-2 text-sm font-semibold border-b-2 border-[#f73a00] pb-1 group-hover:gap-3 transition-all">
@@ -182,7 +183,7 @@ export default function CategoryShowcase() {
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </span>
                     <span className="text-white/60 text-sm">
-                      {cat1.product_count} products
+                      {cat4.product_count} products
                     </span>
                   </div>
                 </div>
@@ -223,29 +224,29 @@ export default function CategoryShowcase() {
                   </div>
                 </Link>
               )}
-              {cat4 && (
+              {cat1 && (
                 <Link
-                  href={`/products?category=${cat4.id}`}
+                  href={`/products?category=${cat1.id}`}
                   className="group relative block"
                 >
                   <div className="relative h-[170px] md:h-[190px] rounded-lg overflow-hidden">
                     <img
-                      src={getCategoryImage(cat4)}
-                      alt={cat4.title}
+                      src={getCategoryImage(cat1)}
+                      alt={cat1.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <h3 className="text-lg font-bold mb-1">{cat4.title}</h3>
+                      <h3 className="text-lg font-bold mb-1">{cat1.title}</h3>
                       <p className="text-white/70 text-xs mb-2 line-clamp-1">
-                        {cat4.description || "Shop now"}
+                        {cat1.description || "Shop now"}
                       </p>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium border-b border-[#f73a00] pb-0.5 group-hover:border-b-2 transition-all">
                           Shop
                         </span>
                         <span className="text-white/50 text-xs">
-                          {cat4.product_count}
+                          {cat1.product_count}
                         </span>
                       </div>
                     </div>

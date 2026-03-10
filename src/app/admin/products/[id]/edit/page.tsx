@@ -21,6 +21,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus,
   Trash2,
   Loader2,
@@ -84,6 +94,10 @@ export default function EditProductPage() {
   const [variants, setVariants] = useState<ProductVariant[]>([
     { color: "", size: "", unit: "", price: "" },
   ]);
+
+  // Delete modal state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Image states
   const [mainImage, setMainImage] = useState<File | null>(null);
@@ -208,7 +222,6 @@ export default function EditProductPage() {
     if (mainPreview) URL.revokeObjectURL(mainPreview);
     setMainImage(file);
     setMainPreview(URL.createObjectURL(file));
-    // If there was an existing main image, mark it for deletion
     if (mainExisting) {
       setImagesToDelete((prev) => [...prev, mainExisting]);
       setMainExisting(null);
@@ -263,13 +276,11 @@ export default function EditProductPage() {
   };
 
   const removeAdditionalImage = (index: number) => {
-    // If it's an existing image, mark it for deletion
     if (index < additionalExisting.length) {
       const url = additionalExisting[index];
       setImagesToDelete((prev) => [...prev, url]);
       setAdditionalExisting((prev) => prev.filter((_, i) => i !== index));
     } else {
-      // It's a newly uploaded image
       const newIndex = index - additionalExisting.length;
       setAdditionalImages((prev) => prev.filter((_, i) => i !== newIndex));
       URL.revokeObjectURL(additionalPreviews[index]);
@@ -277,7 +288,7 @@ export default function EditProductPage() {
     }
   };
 
-  // Variant handlers (same as before)
+  // Variant handlers
   const handleVariantChange = (
     index: number,
     field: keyof ProductVariant,
@@ -356,7 +367,6 @@ export default function EditProductPage() {
         formDataToSend.append("variants", JSON.stringify(variantsData));
       }
 
-      // Build final images array: existing kept + new files in order
       const keptImages: string[] = [];
       if (mainExisting) keptImages.push(mainExisting);
       if (secondaryExisting) keptImages.push(secondaryExisting);
@@ -364,7 +374,6 @@ export default function EditProductPage() {
 
       formDataToSend.append("existingImages", JSON.stringify(keptImages));
 
-      // Append new files in the desired order: main, secondary, additional
       if (mainImage) formDataToSend.append("newImages", mainImage);
       if (secondaryImage) formDataToSend.append("newImages", secondaryImage);
       additionalImages.forEach((file) => {
@@ -392,8 +401,7 @@ export default function EditProductPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
-
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/products/${productId}`, {
         method: "DELETE",
@@ -409,6 +417,9 @@ export default function EditProductPage() {
       router.push("/admin/products");
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -429,436 +440,470 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Edit Product</h1>
-        <p className="text-gray-600">Update product information</p>
-      </div>
+    <>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Edit Product</h1>
+          <p className="text-gray-600">Update product information</p>
+        </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Product Information</CardTitle>
-            <CardDescription>Update the product details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Title, Description, Category, Price (unchanged) */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Product Title *</Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Enter product name"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Enter product description"
-                rows={4}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Product Information</CardTitle>
+              <CardDescription>Update the product details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Title, Description, Category, Price (unchanged) */}
               <div className="space-y-2">
-                <Label htmlFor="category_id">Category</Label>
-                <Select
-                  value={formData.category_id}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, category_id: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    <SelectItem value="null">Uncategorized</SelectItem>
-                    {categoryOptions.map((option) => (
-                      <SelectItem
-                        key={option.id}
-                        value={option.id}
-                        className={option.depth > 0 ? "pl-6" : ""}
-                      >
-                        {option.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="price">
-                  {hasVariants ? "Base Price (Br) *" : "Price (Br) *"}
-                </Label>
+                <Label htmlFor="title">Product Title *</Label>
                 <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
+                  id="title"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
-                  placeholder="0.00"
+                  placeholder="Enter product name"
                   required
                 />
-                {hasVariants && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    This is the base price. Variants can have different prices.
-                  </p>
-                )}
               </div>
-            </div>
 
-            {/* Variants Toggle & Section (unchanged, same as in NewProductPage) */}
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center space-x-3">
-                <Package className="h-5 w-5 text-gray-500" />
-                <div>
-                  <Label htmlFor="variants" className="text-base font-medium">
-                    Product Variants
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Enter product description"
+                  rows={4}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="category_id">Category</Label>
+                  <Select
+                    value={formData.category_id}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, category_id: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-80">
+                      <SelectItem value="null">Uncategorized</SelectItem>
+                      {categoryOptions.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          className={option.depth > 0 ? "pl-6" : ""}
+                        >
+                          {option.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="price">
+                    {hasVariants ? "Base Price (Br) *" : "Price (Br) *"}
                   </Label>
-                  <p className="text-sm text-gray-500">
-                    Enable if this product comes in different colors, sizes, or
-                    units
-                  </p>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    required
+                  />
+                  {hasVariants && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      This is the base price. Variants can have different
+                      prices.
+                    </p>
+                  )}
                 </div>
               </div>
-              <Switch
-                checked={hasVariants}
-                onCheckedChange={(checked) => {
-                  setHasVariants(checked);
-                  if (checked) setShowVariants(true);
-                }}
-              />
-            </div>
 
-            {hasVariants && (
-              <div className="border rounded-lg p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowVariants(!showVariants)}
-                      className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
-                    >
-                      {showVariants ? (
-                        <ChevronUp className="h-4 w-4 mr-1" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 mr-1" />
-                      )}
-                      Variants ({variants.length})
-                    </button>
+              {/* Variants Toggle & Section */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Package className="h-5 w-5 text-gray-500" />
+                  <div>
+                    <Label htmlFor="variants" className="text-base font-medium">
+                      Product Variants
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Enable if this product comes in different colors, sizes,
+                      or units
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={hasVariants}
+                  onCheckedChange={(checked) => {
+                    setHasVariants(checked);
+                    if (checked) setShowVariants(true);
+                  }}
+                />
+              </div>
+
+              {hasVariants && (
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowVariants(!showVariants)}
+                        className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
+                      >
+                        {showVariants ? (
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                        )}
+                        Variants ({variants.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {showVariants && (
+                    <div className="space-y-4">
+                      {variants.map((variant, index) => (
+                        <div
+                          key={index}
+                          className="p-4 border rounded-lg space-y-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-gray-900">
+                              Variant {index + 1}
+                            </h4>
+                            {variants.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeVariant(index)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`color-${index}`}
+                                className="flex items-center text-sm"
+                              >
+                                <Palette className="h-3 w-3 mr-1" />
+                                Color
+                              </Label>
+                              <Input
+                                id={`color-${index}`}
+                                value={variant.color}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    index,
+                                    "color",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g., Red, Blue"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`size-${index}`}
+                                className="flex items-center text-sm"
+                              >
+                                <Ruler className="h-3 w-3 mr-1" />
+                                Size
+                              </Label>
+                              <Input
+                                id={`size-${index}`}
+                                value={variant.size}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    index,
+                                    "size",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g., S, M, L, 10kg"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`unit-${index}`}
+                                className="flex items-center text-sm"
+                              >
+                                <Package className="h-3 w-3 mr-1" />
+                                Unit
+                              </Label>
+                              <Input
+                                id={`unit-${index}`}
+                                value={variant.unit}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    index,
+                                    "unit",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g., Pack, Box, Piece"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`price-${index}`}
+                                className="flex items-center text-sm"
+                              >
+                                <Tag className="h-3 w-3 mr-1" />
+                                Price (Br) *
+                              </Label>
+                              <Input
+                                id={`price-${index}`}
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={variant.price}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    index,
+                                    "price",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="0.00"
+                                required={hasVariants}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+                        <p>
+                          • Each variant must have at least one attribute
+                          (color, size, or unit)
+                        </p>
+                        <p>• All variants must have a price</p>
+                        <p>
+                          • Variants with identical attributes will be merged
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addVariant}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Variant
+                  </Button>
+                </div>
+              )}
+
+              {/* Product Images */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Product Images
+                </h3>
+
+                {/* Main Image */}
+                <div className="space-y-2">
+                  <Label>Main Image (first)</Label>
+                  <div className="flex items-center gap-4">
+                    {(mainPreview || mainExisting) && (
+                      <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                        <img
+                          src={mainPreview || mainExisting || ""}
+                          alt="Main"
+                          className="object-cover fill"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeMainImage}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    {!mainPreview && !mainExisting && (
+                      <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                        <Upload className="h-6 w-6 text-gray-400" />
+                        <span className="text-xs text-gray-500">Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleMainImageChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
 
-                {showVariants && (
-                  <div className="space-y-4">
-                    {variants.map((variant, index) => (
+                {/* Secondary Image */}
+                <div className="space-y-2">
+                  <Label>Secondary Image (second)</Label>
+                  <div className="flex items-center gap-4">
+                    {(secondaryPreview || secondaryExisting) && (
+                      <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                        <img
+                          src={secondaryPreview || secondaryExisting || ""}
+                          alt="Secondary"
+                          className="object-cover fill"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeSecondaryImage}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    {!secondaryPreview && !secondaryExisting && (
+                      <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                        <Upload className="h-6 w-6 text-gray-400" />
+                        <span className="text-xs text-gray-500">Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleSecondaryImageChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Images */}
+                <div className="space-y-2">
+                  <Label>Additional Images</Label>
+                  <div className="flex flex-wrap gap-4">
+                    {additionalExisting.map((url, idx) => (
                       <div
-                        key={index}
-                        className="p-4 border rounded-lg space-y-4"
+                        key={`existing-${idx}`}
+                        className="relative w-24 h-24 border rounded-md overflow-hidden"
                       >
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-900">
-                            Variant {index + 1}
-                          </h4>
-                          {variants.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeVariant(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor={`color-${index}`}
-                              className="flex items-center text-sm"
-                            >
-                              <Palette className="h-3 w-3 mr-1" />
-                              Color
-                            </Label>
-                            <Input
-                              id={`color-${index}`}
-                              value={variant.color}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  index,
-                                  "color",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g., Red, Blue"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor={`size-${index}`}
-                              className="flex items-center text-sm"
-                            >
-                              <Ruler className="h-3 w-3 mr-1" />
-                              Size
-                            </Label>
-                            <Input
-                              id={`size-${index}`}
-                              value={variant.size}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  index,
-                                  "size",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g., S, M, L, 10kg"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor={`unit-${index}`}
-                              className="flex items-center text-sm"
-                            >
-                              <Package className="h-3 w-3 mr-1" />
-                              Unit
-                            </Label>
-                            <Input
-                              id={`unit-${index}`}
-                              value={variant.unit}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  index,
-                                  "unit",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g., Pack, Box, Piece"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor={`price-${index}`}
-                              className="flex items-center text-sm"
-                            >
-                              <Tag className="h-3 w-3 mr-1" />
-                              Price (Br) *
-                            </Label>
-                            <Input
-                              id={`price-${index}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={variant.price}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  index,
-                                  "price",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="0.00"
-                              required={hasVariants}
-                            />
-                          </div>
-                        </div>
+                        <img
+                          src={url}
+                          alt={`Additional ${idx}`}
+                          className="object-cover fill"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAdditionalImage(idx)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
                     ))}
-
-                    <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                      <p>
-                        • Each variant must have at least one attribute (color,
-                        size, or unit)
-                      </p>
-                      <p>• All variants must have a price</p>
-                      <p>• Variants with identical attributes will be merged</p>
-                    </div>
+                    {additionalPreviews.map((preview, idx) => (
+                      <div
+                        key={`new-${idx}`}
+                        className="relative w-24 h-24 border rounded-md overflow-hidden"
+                      >
+                        <img
+                          src={preview}
+                          alt={`New ${idx}`}
+                          className="object-cover fill"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeAdditionalImage(
+                              additionalExisting.length + idx,
+                            )
+                          }
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="text-xs text-gray-500">Add more</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleAdditionalImagesChange}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
-                )}
+                </div>
+              </div>
+
+              {/* Action Buttons - Mobile Optimized */}
+              <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3 pt-6">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addVariant}
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="w-full sm:w-auto"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Variant
+                  Delete Product
                 </Button>
-              </div>
-            )}
-
-            {/* Product Images */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900">
-                Product Images
-              </h3>
-
-              {/* Main Image */}
-              <div className="space-y-2">
-                <Label>Main Image (first)</Label>
-                <div className="flex items-center gap-4">
-                  {(mainPreview || mainExisting) && (
-                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
-                      <img
-                        src={mainPreview || mainExisting || ""}
-                        alt="Main"
-                        className="object-cover fill"
-                      />
-                      <button
-                        type="button"
-                        onClick={removeMainImage}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                  {!mainPreview && !mainExisting && (
-                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
-                      <Upload className="h-6 w-6 text-gray-400" />
-                      <span className="text-xs text-gray-500">Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleMainImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/admin/products")}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full sm:w-auto"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </form>
+      </div>
 
-              {/* Secondary Image */}
-              <div className="space-y-2">
-                <Label>Secondary Image (second)</Label>
-                <div className="flex items-center gap-4">
-                  {(secondaryPreview || secondaryExisting) && (
-                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
-                      <img
-                        src={secondaryPreview || secondaryExisting || ""}
-                        alt="Secondary"
-                        className="object-cover fill"
-                      />
-                      <button
-                        type="button"
-                        onClick={removeSecondaryImage}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                  {!secondaryPreview && !secondaryExisting && (
-                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
-                      <Upload className="h-6 w-6 text-gray-400" />
-                      <span className="text-xs text-gray-500">Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleSecondaryImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Additional Images */}
-              <div className="space-y-2">
-                <Label>Additional Images</Label>
-                <div className="flex flex-wrap gap-4">
-                  {/* Existing additional images */}
-                  {additionalExisting.map((url, idx) => (
-                    <div
-                      key={`existing-${idx}`}
-                      className="relative w-24 h-24 border rounded-md overflow-hidden"
-                    >
-                      <img
-                        src={url}
-                        alt={`Additional ${idx}`}
-                        className="object-cover fill"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeAdditionalImage(idx)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {/* New additional previews */}
-                  {additionalPreviews.map((preview, idx) => (
-                    <div
-                      key={`new-${idx}`}
-                      className="relative w-24 h-24 border rounded-md overflow-hidden"
-                    >
-                      <img
-                        src={preview}
-                        alt={`New ${idx}`}
-                        className="object-cover fill"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeAdditionalImage(additionalExisting.length + idx)
-                        }
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
-                    <Upload className="h-6 w-6 text-gray-400" />
-                    <span className="text-xs text-gray-500">Add more</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleAdditionalImagesChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex justify-between items-center pt-6">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-              >
-                Delete Product
-              </Button>
-              <div className="flex space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/admin/products")}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
-    </div>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{product.title}"? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

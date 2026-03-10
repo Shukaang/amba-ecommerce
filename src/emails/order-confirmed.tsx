@@ -3,7 +3,6 @@ import {
   Container,
   Column,
   Head,
-  Heading,
   Hr,
   Html,
   Img,
@@ -96,7 +95,7 @@ export const OrderConfirmedEmail = ({
             </Row>
             <Row>
               <Column align="center">
-                <Text style={headerTitle}>Order Confirmed! 🎉</Text>
+                <Text style={headerTitle}>Order Confirmed!</Text>
                 <Text style={headerSubtitle}>
                   Thank you for shopping with us
                 </Text>
@@ -129,7 +128,7 @@ export const OrderConfirmedEmail = ({
                 )}
               </Column>
               <Column>
-                <Text style={infoTitle}>Shipping Address</Text>
+                <Text style={infoTitle}>Address</Text>
                 <Text style={infoText}>{shipping.address}</Text>
               </Column>
             </Row>
@@ -231,7 +230,7 @@ export const OrderConfirmedEmail = ({
                   Visit Our Store
                 </Link>
                 <Text style={footerText}>
-                  © 2024 AmbaStore. All rights reserved.
+                  © {new Date().getFullYear()} AmbaStore. All rights reserved.
                 </Text>
                 <Text style={footerAddress}>Addis Ababa, Ethiopia</Text>
                 <Text style={footerContact}>
@@ -240,7 +239,7 @@ export const OrderConfirmedEmail = ({
                   </Link>
                   {" • "}
                   <Link href="tel:+251912345678" style={footerLink}>
-                    +251 912 345 678
+                    +251912345678
                   </Link>
                 </Text>
               </Column>
@@ -490,7 +489,7 @@ const totalValue = {
 
 const footer = {
   backgroundColor: "#00014a",
-  padding: "30px 20px",
+  padding: "30px 10px",
 };
 
 const footerLink = {

@@ -124,7 +124,7 @@ function LoginContent() {
               </Alert>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 text-gray-900">
               <Label htmlFor="email" className="text-gray-700">
                 EMAIL ADDRESS
               </Label>
@@ -153,7 +153,7 @@ function LoginContent() {
                   Forgot password?
                 </Link>
               </div>
-              <div className="relative">
+              <div className="relative text-gray-900">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}

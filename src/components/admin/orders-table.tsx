@@ -25,9 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import Link from "next/link";
+import { useAuth } from "@/lib/auth/context";
 
-// ---------- Type Definitions ----------
 interface OrderItem {
   id: string;
   quantity: number;
@@ -35,7 +34,7 @@ interface OrderItem {
   products: {
     title: string;
     images: string[];
-    link: string;
+    slug: string;
   };
   product_variants: {
     color: string;
@@ -52,6 +51,7 @@ interface Order {
   shipping_info: string;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   users: {
     id: string;
     name: string;
@@ -59,6 +59,11 @@ interface Order {
     phone: string | null;
     address: string | null;
   };
+  updated_by_user?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   order_items: OrderItem[];
 }
 
@@ -66,7 +71,7 @@ interface OrdersTableProps {
   orders: Order[];
 }
 
-// ---------- Helper Functions ----------
+// Helper functions
 const getStatusColor = (status: string) => {
   switch (status) {
     case "COMPLETED":
@@ -101,18 +106,17 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
-};
 
-const formatFullDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
+const formatFullDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -120,66 +124,81 @@ const formatFullDate = (dateString: string) => {
     minute: "2-digit",
     second: "2-digit",
   });
-};
 
-// Helper to get a human-friendly order reference
-const getOrderRef = (order: Pick<Order, "id" | "order_number">) => {
-  if (order.order_number) return `#${order.order_number}`;
-  return `ref ${order.id.slice(0, 8)}`;
-};
-
-// ---------- Main Component ----------
 export default function OrdersTable({
   orders: initialOrders,
 }: OrdersTableProps) {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState<string | null>(null); // for status updates
+  const [loading, setLoading] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-
-  // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<{
     id: string;
-    orderNumber: string | null; // 👈 allow null
+    orderNumber: string | null;
   } | null>(null);
 
-  // ---------- Real-time subscription (only for new orders) ----------
-  useEffect(() => {
-    const supabase = createClient();
+  const supabase = createClient();
 
+  // Real‑time subscription for admin (INSERT, UPDATE, DELETE)
+  useEffect(() => {
     const channel = supabase
-      .channel("admin-orders-insert")
+      .channel("admin-orders-all")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         async (payload) => {
-          // Fetch the complete new order with relations
           const { data: newOrder, error } = await supabase
             .from("orders")
             .select(
               `
               *,
-              users!inner(id, name, email, phone, address),
-              order_items(
-                *,
-                products(*),
-                product_variants(*)
-              )
+              users!orders_user_id_fkey(id, name, email, phone, address),
+              updated_by_user:users!orders_updated_by_fkey(id, name, email),
+              order_items(*, products(*), product_variants(*))
             `,
             )
             .eq("id", payload.new.id)
             .single();
-
-          if (error) {
-            console.error("Error fetching new order:", error);
-            return;
+          if (!error && newOrder) setOrders((prev) => [newOrder, ...prev]);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        async (payload) => {
+          // Refresh the updated order to get the latest updated_by_user info
+          const { data: updatedOrder, error } = await supabase
+            .from("orders")
+            .select(
+              `
+              *,
+              users!orders_user_id_fkey(id, name, email, phone, address),
+              updated_by_user:users!orders_updated_by_fkey(id, name, email),
+              order_items(*, products(*), product_variants(*))
+            `,
+            )
+            .eq("id", payload.new.id)
+            .single();
+          if (!error && updatedOrder) {
+            setOrders((prev) =>
+              prev.map((order) =>
+                order.id === updatedOrder.id ? updatedOrder : order,
+              ),
+            );
           }
-          if (newOrder) {
-            setOrders((prev) => [newOrder, ...prev]);
-          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "orders" },
+        (payload) => {
+          setOrders((prev) =>
+            prev.filter((order) => order.id !== payload.old.id),
+          );
         },
       )
       .subscribe();
@@ -189,14 +208,13 @@ export default function OrdersTable({
     };
   }, []);
 
-  // ---------- Event Handlers ----------
+  // Status update with updated_by
   const handleStatusUpdate = useCallback(
     async (orderId: string, newStatus: string) => {
-      const currentOrder = orders.find((order) => order.id === orderId);
-      if (currentOrder?.status === newStatus) return;
+      const currentOrder = orders.find((o) => o.id === orderId);
+      if (!currentOrder || currentOrder.status === newStatus) return;
 
       setLoading(orderId);
-
       try {
         const res = await fetch(`/api/admin/orders/${orderId}`, {
           method: "PUT",
@@ -204,43 +222,17 @@ export default function OrdersTable({
           body: JSON.stringify({ status: newStatus }),
         });
 
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const errorText = await res.text();
-          console.error("Non-JSON response:", errorText.substring(0, 200));
-          throw new Error(`Server returned ${res.status}: ${res.statusText}`);
-        }
-
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Update failed");
 
-        if (!res.ok) {
-          throw new Error(
-            data.error || `Failed to update order status (${res.status})`,
-          );
-        }
+        // Update state with the full order from the API
+        setOrders((prev) =>
+          prev.map((order) => (order.id === orderId ? data.order : order)),
+        );
 
-        toast.success(data.message || "Order status updated successfully");
-
-        // Update the order in state with the full updated order from API
-        const updatedOrder = data.order;
-        if (updatedOrder) {
-          setOrders((prev) =>
-            prev.map((order) =>
-              order.id === orderId ? { ...order, ...updatedOrder } : order,
-            ),
-          );
-        }
-      } catch (error: any) {
-        console.error("Status update error:", error);
-        toast.error(error.message || "Failed to update order status");
-
-        // Revert the select element
-        const selectElement = document.querySelector(
-          `select[data-order-id="${orderId}"]`,
-        ) as HTMLSelectElement;
-        if (selectElement && currentOrder) {
-          selectElement.value = currentOrder.status;
-        }
+        toast.success("Order status updated");
+      } catch (err: any) {
+        toast.error(err.message);
       } finally {
         setLoading(null);
       }
@@ -248,64 +240,45 @@ export default function OrdersTable({
     [orders],
   );
 
-  const openDeleteModal = useCallback(
-    (orderId: string, orderNumber: string | null) => {
-      setOrderToDelete({ id: orderId, orderNumber });
-      setDeleteModalOpen(true);
-    },
-    [],
-  );
+  // Delete with modal
+  const openDeleteModal = (id: string, orderNumber: string | null) => {
+    setOrderToDelete({ id, orderNumber });
+    setDeleteModalOpen(true);
+  };
 
-  const closeDeleteModal = useCallback(() => {
-    setDeleteModalOpen(false);
-    setOrderToDelete(null);
-  }, []);
-
-  const confirmDelete = useCallback(async () => {
+  const confirmDelete = async () => {
     if (!orderToDelete) return;
-
-    const { id } = orderToDelete;
-    setDeleteLoading(id);
-
+    setDeleteLoading(orderToDelete.id);
     try {
-      const res = await fetch(`/api/admin/orders/${id}`, {
+      const res = await fetch(`/api/admin/orders/${orderToDelete.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
       });
-
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const errorText = await res.text();
-        console.error("Non-JSON response:", errorText.substring(0, 200));
-        throw new Error(`Server returned ${res.status}: ${res.statusText}`);
-      }
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
 
-      if (!res.ok) {
-        throw new Error(data.error || `Failed to delete order (${res.status})`);
-      }
-
-      toast.success(data.message || "Order deleted successfully");
-
-      setOrders((prev) => prev.filter((order) => order.id !== id));
-      if (expandedOrder === id) {
+      // Remove from state
+      setOrders((prev) =>
+        prev.filter((order) => order.id !== orderToDelete.id),
+      );
+      if (expandedOrder === orderToDelete.id) {
         setExpandedOrder(null);
       }
-      closeDeleteModal();
-    } catch (error: any) {
-      console.error("Delete error:", error);
-      toast.error(error.message || "Failed to delete order");
+      toast.success(data.message);
+    } catch (err: any) {
+      toast.error(err.message);
     } finally {
       setDeleteLoading(null);
+      setDeleteModalOpen(false);
+      setOrderToDelete(null);
     }
-  }, [orderToDelete, expandedOrder, closeDeleteModal]);
+  };
 
-  const toggleOrderDetails = useCallback((orderId: string) => {
+  // Click to expand
+  const toggleExpand = (orderId: string) => {
     setExpandedOrder((prev) => (prev === orderId ? null : orderId));
-  }, []);
+  };
 
-  // ---------- Filtering ----------
+  // Filtering
   const filteredOrders = useMemo(() => {
     const q = searchQuery.toLowerCase();
     return orders.filter((order) => {
@@ -315,7 +288,6 @@ export default function OrdersTable({
         (order.users?.name ?? "").toLowerCase().includes(q) ||
         (order.users?.email ?? "").toLowerCase().includes(q) ||
         (order.shipping_info ?? "").toLowerCase().includes(q);
-
       const matchesStatus =
         statusFilter === "all" || order.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -333,14 +305,14 @@ export default function OrdersTable({
               placeholder="Search by ref, order number, customer name, email, or shipping info..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded-md text-gray-900 text-sm ring-2 ring-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="flex items-center space-x-4">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border text-gray-900 ring ring-gray-400 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
               <option value="PENDING">Pending</option>
@@ -355,7 +327,7 @@ export default function OrdersTable({
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Table – click‑to‑expand on row */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 text-sm md:text-base">
           <thead className="bg-gray-50">
@@ -383,16 +355,16 @@ export default function OrdersTable({
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredOrders.map((order) => (
               <Fragment key={order.id}>
-                <tr className="hover:bg-gray-50">
+                {/* Clickable row */}
+                <tr
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => toggleExpand(order.id)}
+                >
                   <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">
-                      {order.order_number ? (
-                        `#${order.order_number}`
-                      ) : (
-                        <span className="text-gray-500">
-                          ref {order.id.slice(0, 8)}
-                        </span>
-                      )}
+                      {order.order_number
+                        ? `#${order.order_number}`
+                        : `ref ${order.id.slice(0, 8)}`}
                     </div>
                   </td>
                   <td className="px-4 md:px-6 py-4">
@@ -415,15 +387,17 @@ export default function OrdersTable({
                     </div>
                   </td>
                   <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
+                    <div
+                      className="flex items-center space-x-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <select
                         value={order.status}
                         onChange={(e) =>
                           handleStatusUpdate(order.id, e.target.value)
                         }
-                        className="px-2 py-1 border rounded text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="px-2 py-1 border rounded text-gray-900 ring-1 ring-gray-400 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         disabled={loading === order.id}
-                        data-order-id={order.id}
                       >
                         <option value="PENDING">Pending</option>
                         <option value="CONFIRMED">Confirmed</option>
@@ -442,23 +416,10 @@ export default function OrdersTable({
                     {formatDate(order.created_at)}
                   </td>
                   <td className="px-4 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm font-medium">
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => toggleOrderDetails(order.id)}
-                        className="text-blue-600 hover:text-blue-900 flex items-center"
-                      >
-                        {expandedOrder === order.id ? (
-                          <>
-                            <EyeOff className="h-4 w-4 mr-1" />
-                            <span className="hidden xs:inline">Hide</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-4 w-4 mr-1" />
-                            <span className="hidden xs:inline">Details</span>
-                          </>
-                        )}
-                      </button>
+                    <div
+                      className="flex items-center space-x-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() =>
                           openDeleteModal(order.id, order.order_number)
@@ -468,21 +429,18 @@ export default function OrdersTable({
                         title="Delete Order"
                       >
                         <Trash2 className="h-4 w-4" />
-                        {deleteLoading === order.id && (
-                          <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></span>
-                        )}
                       </button>
                     </div>
                   </td>
                 </tr>
 
-                {/* Expanded Order Details */}
+                {/* Expanded details */}
                 {expandedOrder === order.id && (
                   <tr>
                     <td colSpan={6} className="px-4 md:px-6 py-4 bg-gray-50">
                       <div className="border rounded-lg bg-white p-4 md:p-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Customer Information */}
+                          {/* Customer info */}
                           <div>
                             <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-4 flex items-center">
                               <User className="h-5 w-5 mr-2" />
@@ -528,24 +486,26 @@ export default function OrdersTable({
                             </div>
                           </div>
 
-                          {/* Shipping Information */}
+                          {/* Shipping info & timeline */}
                           <div>
                             <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-4 flex items-center">
                               <Package className="h-5 w-5 mr-2" />
-                              Shipping Information
+                              Order Details
                             </h4>
-                            <div className="text-xs md:text-sm">
-                              <div className="font-medium text-gray-700 mb-2">
-                                Shipping Address
+                            <div className="text-xs md:text-sm space-y-3">
+                              <div>
+                                <div className="font-medium text-gray-700 mb-1">
+                                  Shipping Address
+                                </div>
+                                <div className="text-gray-900 whitespace-pre-line break-words">
+                                  {order.shipping_info}
+                                </div>
                               </div>
-                              <div className="text-gray-900 whitespace-pre-line break-words">
-                                {order.shipping_info}
-                              </div>
-                              <div className="mt-4 pt-4 border-t">
+                              <div className="pt-2 border-t">
                                 <div className="font-medium text-gray-700">
                                   Order Timeline
                                 </div>
-                                <div className="mt-2 space-y-2">
+                                <div className="mt-2 space-y-1">
                                   <div className="flex justify-between">
                                     <span className="text-gray-600">
                                       Created:
@@ -562,6 +522,21 @@ export default function OrdersTable({
                                       {formatFullDate(order.updated_at)}
                                     </span>
                                   </div>
+                                  {order.updated_by_user && (
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-gray-600">
+                                        Updated By:
+                                      </span>
+                                      <div className="text-right">
+                                        <div className="text-gray-900 font-medium">
+                                          {order.updated_by_user.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {order.updated_by_user.email}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -580,8 +555,7 @@ export default function OrdersTable({
                                 >
                                   <div className="flex items-center flex-1 min-w-0">
                                     <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                                      {item.products.images &&
-                                      item.products.images.length > 0 ? (
+                                      {item.products.images?.[0] ? (
                                         <img
                                           src={item.products.images[0]}
                                           alt={item.products.title}
@@ -592,20 +566,9 @@ export default function OrdersTable({
                                       )}
                                     </div>
                                     <div className="min-w-0">
-                                      {item.products.link ? (
-                                        <a
-                                          href={item.products.link}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="font-medium text-gray-900 truncate hover:underline"
-                                        >
-                                          {item.products.title}
-                                        </a>
-                                      ) : (
-                                        <div className="font-medium text-gray-900 truncate">
-                                          {item.products.title}
-                                        </div>
-                                      )}
+                                      <div className="font-medium text-gray-900 truncate">
+                                        {item.products.title}
+                                      </div>
                                       {item.product_variants && (
                                         <div className="mt-1 text-xs md:text-sm text-gray-500 flex flex-wrap gap-x-3">
                                           {item.product_variants.color && (
@@ -702,19 +665,19 @@ export default function OrdersTable({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteModalOpen} onOpenChange={closeDeleteModal}>
+      <AlertDialog
+        open={deleteModalOpen}
+        onOpenChange={() => setDeleteModalOpen(false)}
+      >
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Order</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete order{" "}
-              {orderToDelete
-                ? orderToDelete.orderNumber
-                  ? `#${orderToDelete.orderNumber}`
-                  : `ref ${orderToDelete.id.slice(0, 8)}`
-                : ""}
-              ? This action cannot be undone. All associated order items will
-              also be deleted.
+              {orderToDelete?.orderNumber
+                ? `#${orderToDelete.orderNumber}`
+                : `ref ${orderToDelete?.id.slice(0, 8)}`}
+              ? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -724,7 +687,7 @@ export default function OrdersTable({
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteLoading === orderToDelete?.id}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700"
             >
               {deleteLoading === orderToDelete?.id ? "Deleting..." : "Delete"}
             </AlertDialogAction>

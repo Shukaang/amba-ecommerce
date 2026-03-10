@@ -152,14 +152,20 @@ export default function NewCategoryPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card>
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Category Information</CardTitle>
-            <CardDescription>Enter category details</CardDescription>
+            <CardTitle className="text-gray-900">
+              Category Information
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              Enter category details
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 bg-white">
             <div className="space-y-2">
-              <Label htmlFor="title">Category Title *</Label>
+              <Label htmlFor="title" className="text-gray-700">
+                Category Title *
+              </Label>
               <Input
                 id="title"
                 name="title"
@@ -167,11 +173,14 @@ export default function NewCategoryPage() {
                 onChange={handleChange}
                 placeholder="Enter category name"
                 required
+                className="bg-white border-gray-300 text-gray-900 focus:ring-[#f73a00] focus:border-[#f73a00]"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-gray-700">
+                Description
+              </Label>
               <Textarea
                 id="description"
                 name="description"
@@ -179,28 +188,40 @@ export default function NewCategoryPage() {
                 onChange={handleChange}
                 placeholder="Enter category description"
                 rows={3}
+                className="bg-white border-gray-300 text-gray-900 focus:ring-[#f73a00] focus:border-[#f73a00]"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="parent_id">Parent Category</Label>
+                <Label htmlFor="parent_id" className="text-gray-700">
+                  Parent Category
+                </Label>
                 <Select
                   value={formData.parent_id}
                   onValueChange={(value) =>
                     setFormData((prev) => ({ ...prev, parent_id: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                     <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    <SelectItem value="null">None (Main Category)</SelectItem>
+                  <SelectContent className="bg-white border-gray-200 shadow-lg">
+                    <SelectItem
+                      value="null"
+                      className="text-gray-900 hover:bg-gray-100"
+                    >
+                      None (Main Category)
+                    </SelectItem>
                     {parentOptions.map((option) => (
                       <SelectItem
                         key={option.id}
                         value={option.id}
-                        className={option.depth > 0 ? "pl-6" : ""}
+                        className={
+                          option.depth > 0
+                            ? "pl-6 text-gray-900 hover:bg-gray-100"
+                            : "text-gray-900 hover:bg-gray-100"
+                        }
                       >
                         {option.title}
                       </SelectItem>
@@ -211,10 +232,12 @@ export default function NewCategoryPage() {
 
               {/* Image upload */}
               <div className="space-y-2">
-                <Label htmlFor="image">Category Image (optional)</Label>
+                <Label htmlFor="image" className="text-gray-700">
+                  Category Image (optional)
+                </Label>
                 <div className="flex items-center gap-4">
                   {imagePreview ? (
-                    <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                    <div className="relative w-24 h-24 border border-gray-300 rounded-md overflow-hidden bg-gray-50">
                       <Image
                         src={imagePreview}
                         alt="Category preview"
@@ -224,13 +247,13 @@ export default function NewCategoryPage() {
                       <button
                         type="button"
                         onClick={removeImage}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </div>
                   ) : (
-                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                    <label className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00] bg-white">
                       <Upload className="h-6 w-6 text-gray-400" />
                       <span className="text-xs text-gray-500">Upload</span>
                       <input
@@ -253,10 +276,15 @@ export default function NewCategoryPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/admin/categories")}
+                className="border-gray-300 text-gray-700 hover:bg-gray-100"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+              >
                 {loading ? "Creating..." : "Create Category"}
               </Button>
             </div>

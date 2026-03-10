@@ -172,11 +172,31 @@ export default function ProductDetailClient({
     }
   };
 
+  function useMediaQuery(query: string) {
+    const [matches, setMatches] = useState(false);
+
+    useEffect(() => {
+      const media = window.matchMedia(query);
+      if (media.matches !== matches) {
+        setMatches(media.matches);
+      }
+      const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
+      media.addEventListener("change", listener);
+      return () => media.removeEventListener("change", listener);
+    }, [matches, query]);
+
+    return matches;
+  }
+
+  // Inside ProductDetailClient component, add this after other hooks
+  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+
+  // Change the fetchRecommended call to limit 6 instead of 5
   const fetchRecommended = async () => {
     try {
       setLoadingRecommended(true);
       const res = await fetch(
-        `/api/products/recommended?productId=${product.id}&limit=5`,
+        `/api/products/recommended?productId=${product.id}&limit=6`, // changed to 6
       );
       const data = await res.json();
       if (res.ok) {
@@ -188,6 +208,10 @@ export default function ProductDetailClient({
       setLoadingRecommended(false);
     }
   };
+
+  const displayedRecommended = isLargeScreen
+    ? recommended.slice(0, 5)
+    : recommended;
 
   // Cart animation
   const createCartAnimation = (startRect: DOMRect) => {
@@ -962,9 +986,9 @@ export default function ProductDetailClient({
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-[#f73a00]" />
             </div>
-          ) : recommended.length > 0 ? (
+          ) : displayedRecommended.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {recommended.map((rec) => (
+              {displayedRecommended.map((rec) => (
                 <Link
                   key={rec.id}
                   href={`/products/${rec.slug}`}

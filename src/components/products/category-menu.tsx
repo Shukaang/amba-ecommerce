@@ -217,8 +217,8 @@ export default function CategoryMenu({
         </Button>
       </div>
 
-      {/* Desktop category menu */}
-      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-24">
+      {/* Desktop category menu - added z-10 to ensure it stacks above product grid */}
+      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-24 z-10">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-gray-900">Categories</h3>
           {selectedCategoryId && (

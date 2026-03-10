@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -9,6 +10,7 @@ import UserHeader from "@/components/user/users-header";
 import PageTracker from "@/components/tracking/page-tracker";
 import Footer from "@/components/user/footer";
 import { Suspense } from "react";
+import { createClient } from "@/lib/supabase/supabaseServer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -51,11 +53,47 @@ function FooterSkeleton() {
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Fetch categories on the server
+  const supabase = await createClient();
+  const { data: categoriesData } = await supabase
+    .from("categories")
+    .select("id, title, parent_id")
+    .order("title");
+
+  // Build category tree on the server
+  const buildCategoryTree = (
+    categories: { id: string; title: string; parent_id: string | null }[],
+  ) => {
+    const categoryMap = new Map<string, any>();
+    const roots: any[] = [];
+
+    categories.forEach((cat) => {
+      categoryMap.set(cat.id, { ...cat, children: [] });
+    });
+
+    categories.forEach((cat) => {
+      if (cat.parent_id) {
+        const parent = categoryMap.get(cat.parent_id);
+        if (parent) {
+          parent.children.push(categoryMap.get(cat.id));
+        } else {
+          roots.push(categoryMap.get(cat.id));
+        }
+      } else {
+        roots.push(categoryMap.get(cat.id));
+      }
+    });
+
+    return roots;
+  };
+
+  const categoryTree = categoriesData ? buildCategoryTree(categoriesData) : [];
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -70,11 +108,11 @@ export default function RootLayout({
               <PageTracker />
               <div className="w-full min-h-screen flex flex-col">
                 <Suspense fallback={<HeaderSkeleton />}>
-                  <UserHeader />
+                  <UserHeader categories={categoryTree} />
                 </Suspense>
                 <main className="flex-1">{children}</main>
                 <Suspense fallback={<FooterSkeleton />}>
-                  <Footer />
+                  <Footer categories={categoryTree} />
                 </Suspense>
               </div>
               <Toaster position="top-right" />

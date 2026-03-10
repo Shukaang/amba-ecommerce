@@ -1,3 +1,4 @@
+// components/user/users-header.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -12,12 +13,12 @@ import {
   Menu,
   X,
   LogOut,
-  Settings,
   Package,
   Home,
   ChevronDown,
   ChevronRight,
-  Loader2,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,13 @@ interface SearchProduct {
   images: string[];
 }
 
-export default function UserHeader() {
+interface UserHeaderProps {
+  categories?: Category[]; // optional server-fetched full category tree
+}
+
+export default function UserHeader({
+  categories: serverCategories,
+}: UserHeaderProps) {
   const { user, loading: authLoading, logout } = useAuth();
   const { itemCount, loading: cartLoading } = useCart();
   const pathname = usePathname();
@@ -57,8 +64,11 @@ export default function UserHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  // Use server categories if provided, otherwise start with empty array
+  const [categories, setCategories] = useState<Category[]>(
+    serverCategories || [],
+  );
+  const [loadingCategories, setLoadingCategories] = useState(!serverCategories);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchProduct[]>(
     [],
   );
@@ -76,40 +86,45 @@ export default function UserHeader() {
 
   const supabase = createClient();
 
-  // Fetch all categories and build tree
+  // Fetch categories client-side only if not provided from server
   useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, title, parent_id")
-        .order("title");
-      if (!error && data) {
-        const categoryMap = new Map<string, Category>();
-        const roots: Category[] = [];
-        data.forEach((cat) => {
-          categoryMap.set(cat.id, { ...cat, children: [] });
-        });
-        data.forEach((cat) => {
-          const category = categoryMap.get(cat.id)!;
-          if (cat.parent_id) {
-            const parent = categoryMap.get(cat.parent_id);
-            if (parent) {
-              if (!parent.children) parent.children = [];
-              parent.children.push(category);
+    if (!serverCategories) {
+      const fetchCategories = async () => {
+        setLoadingCategories(true);
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id, title, parent_id")
+          .order("title");
+        if (!error && data) {
+          const categoryMap = new Map<string, Category>();
+          const roots: Category[] = [];
+          data.forEach((cat) => {
+            categoryMap.set(cat.id, { ...cat, children: [] });
+          });
+          data.forEach((cat) => {
+            const category = categoryMap.get(cat.id)!;
+            if (cat.parent_id) {
+              const parent = categoryMap.get(cat.parent_id);
+              if (parent) {
+                if (!parent.children) parent.children = [];
+                parent.children.push(category);
+              } else {
+                roots.push(category);
+              }
             } else {
               roots.push(category);
             }
-          } else {
-            roots.push(category);
-          }
-        });
-        setCategories(roots);
-      }
+          });
+          setCategories(roots);
+        }
+        setLoadingCategories(false);
+      };
+      fetchCategories();
+    } else {
+      // If server categories are provided, we're already set
       setLoadingCategories(false);
-    };
-    fetchCategories();
-  }, []);
+    }
+  }, [serverCategories, supabase]);
 
   // Scroll effect
   useEffect(() => {
@@ -141,7 +156,7 @@ export default function UserHeader() {
       }
     };
     fetchSuggestions();
-  }, [debouncedSearch]);
+  }, [debouncedSearch, supabase]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -237,7 +252,7 @@ export default function UserHeader() {
   // Show loading skeleton while auth is loading
   if (authLoading) {
     return (
-      <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200">
+      <header className="sticky top-0 z-[100] w-full bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center gap-2">
@@ -261,7 +276,7 @@ export default function UserHeader() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full transition-all duration-300 bg-white ${
+        className={`sticky top-0 z-[100] w-full transition-all duration-300 bg-white ${
           scrolled
             ? "border-b border-gray-200 shadow-sm"
             : "border-b border-gray-100"
@@ -269,15 +284,15 @@ export default function UserHeader() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo + Brand */}
+            {/* Logo + Brand - text hidden on mobile */}
             <Link href="/" className="flex items-center gap-1 shrink-0">
               <ShoppingBag className="text-[#00014a] h-6 w-6" />
-              <span className="text-[#00014a] text-xl font-semibold">
+              <span className="text-[#00014a] text-xl font-semibold hidden lg:inline">
                 Amba<span className="text-[#f73a00]">Store</span>
               </span>
             </Link>
 
-            {/* Desktop Search Bar with integrated Category Dropdown */}
+            {/* Desktop Search Bar */}
             <div
               className="hidden lg:flex flex-1 max-w-2xl mx-4 relative"
               ref={desktopSearchRef}
@@ -300,7 +315,7 @@ export default function UserHeader() {
                   </button>
 
                   {catDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 p-4 flex gap-4 z-[100] w-auto">
+                    <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 p-4 flex gap-4 z-[9999] w-auto">
                       {/* Left column – main categories */}
                       <div className="w-[220px] border-r border-gray-200 pr-4">
                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -317,7 +332,7 @@ export default function UserHeader() {
                           </div>
                         ) : (
                           <ul className="space-y-1">
-                            {categories.map((cat) => (
+                            {(categories || []).map((cat) => (
                               <li
                                 key={cat.id}
                                 onMouseEnter={() =>
@@ -396,7 +411,7 @@ export default function UserHeader() {
 
               {/* Desktop Search Suggestions */}
               {showSuggestions && debouncedSearch.trim() !== "" && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[100] max-h-96 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[9999] max-h-96 overflow-y-auto">
                   {searchSuggestions.length > 0 ? (
                     searchSuggestions.map((product) => (
                       <div
@@ -436,8 +451,102 @@ export default function UserHeader() {
               )}
             </div>
 
-            {/* Right side icons */}
-            <div className="flex items-center gap-4 shrink-0">
+            {/* Mobile Layout - Search centered, hamburger at end */}
+            <div className="flex lg:hidden flex-1 items-center justify-between gap-2">
+              {/* Mobile Search Bar - centered */}
+              <div
+                className="flex-1 max-w-[60%] mx-auto relative"
+                ref={mobileSearchRef}
+              >
+                <form onSubmit={handleSearch} className="w-full">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search..."
+                      className="pl-9 pr-4 py-2 w-full rounded-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => {
+                        if (
+                          searchSuggestions.length > 0 ||
+                          debouncedSearch.trim() !== ""
+                        )
+                          setShowSuggestions(true);
+                      }}
+                    />
+                  </div>
+                </form>
+
+                {/* Mobile Search Suggestions */}
+                {showSuggestions && debouncedSearch.trim() !== "" && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[9999] max-h-60 overflow-y-auto">
+                    {searchSuggestions.length > 0 ? (
+                      searchSuggestions.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => handleSuggestionClick(product.id)}
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
+                        >
+                          <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
+                            {product.images?.[0] ? (
+                              <img
+                                src={product.images[0]}
+                                alt={product.title}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-gray-400">
+                                📦
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {product.title}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ETB {product.price.toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-4 text-center text-gray-500">
+                        No products found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Cart icon - always visible */}
+              <Link href="/cart" className="relative p-2 group shrink-0">
+                <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
+                {itemCount > 0 && (
+                  <Badge className="text-white absolute -top-1 -right-1 h-5 w-5 min-w-0 p-0 flex items-center justify-center rounded-full bg-[#00014a] hover:bg-[#00014a]/90">
+                    {itemCount > 9 ? "9+" : itemCount}
+                  </Badge>
+                )}
+              </Link>
+
+              {/* Hamburger menu - contains auth/user options */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-[#00014a] hover:bg-gray-100"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
+              </Button>
+            </div>
+
+            {/* Desktop Right side icons - unchanged */}
+            <div className="hidden lg:flex items-center gap-4 shrink-0">
               <Link href="/cart" className="relative p-2 group">
                 <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
                 {itemCount > 0 && (
@@ -465,7 +574,7 @@ export default function UserHeader() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-64 bg-white border-gray-200 shadow-xl"
+                    className="w-64 bg-white border-gray-200 shadow-xl z-[9999]"
                     align="end"
                   >
                     <DropdownMenuLabel>
@@ -513,6 +622,7 @@ export default function UserHeader() {
                         My Orders
                       </Link>
                     </DropdownMenuItem>
+
                     {["ADMIN", "SUPERADMIN"].includes(user.role) && (
                       <>
                         <DropdownMenuSeparator className="bg-gray-200" />
@@ -563,34 +673,31 @@ export default function UserHeader() {
                   </Link>
                 </div>
               )}
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden text-[#00014a] hover:bg-gray-100"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-              </Button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu (Hamburger Drawer) - slides from right */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 bg-white">
-            <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="space-y-3">
-                {/* Mobile All Categories */}
-                <div className="border-b border-gray-200 pb-2">
-                  <div className="flex items-center justify-between w-full py-2 text-[#00014a] font-semibold">
-                    All Categories
-                  </div>
-                  <div className="pl-2 space-y-2 mt-2">
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 z-[9998] transition-opacity"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            {/* Drawer */}
+            <div
+              className={`fixed top-20 right-0 h-[calc(100vh-5rem)] w-4/5 max-w-sm bg-white shadow-xl z-[9999] transform transition-transform duration-300 ease-in-out ${
+                mobileMenuOpen ? "translate-x-0" : "translate-x-full"
+              } overflow-y-auto`}
+            >
+              <div className="p-6">
+                {/* All Categories Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-[#00014a] mb-3">
+                    Categories
+                  </h3>
+                  <div className="space-y-2">
                     {loadingCategories ? (
                       <div className="space-y-2">
                         {[1, 2, 3, 4].map((i) => (
@@ -601,87 +708,107 @@ export default function UserHeader() {
                         ))}
                       </div>
                     ) : (
-                      categories.map((cat) => (
-                        <div key={cat.id} className="space-y-1">
-                          <Link
-                            href={`/products?category=${cat.id}`}
-                            className="block py-1 text-sm font-medium text-gray-900 hover:text-[#f73a00]"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {cat.title}
-                          </Link>
-                        </div>
+                      (categories || []).map((cat) => (
+                        <Link
+                          key={cat.id}
+                          href={`/products?category=${cat.id}`}
+                          className="block py-2 text-gray-700 hover:text-[#f73a00] font-medium"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {cat.title}
+                        </Link>
                       ))
                     )}
                   </div>
                 </div>
 
-                {/* Mobile Search with Suggestions */}
-                <div className="pt-4 relative" ref={mobileSearchRef}>
-                  <form onSubmit={handleSearch}>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        type="text"
-                        placeholder="Search collections..."
-                        className="pl-10 pr-4 py-2 w-full rounded-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onFocus={() => {
-                          if (
-                            searchSuggestions.length > 0 ||
-                            debouncedSearch.trim() !== ""
-                          )
-                            setShowSuggestions(true);
-                        }}
-                      />
-                    </div>
-                  </form>
+                {/* Auth / User Section */}
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-semibold text-[#00014a] mb-3">
+                    {user ? "Account" : "Account Access"}
+                  </h3>
 
-                  {/* Mobile Search Suggestions */}
-                  {showSuggestions && debouncedSearch.trim() !== "" && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[100] max-h-60 overflow-y-auto">
-                      {searchSuggestions.length > 0 ? (
-                        searchSuggestions.map((product) => (
-                          <div
-                            key={product.id}
-                            onClick={() => handleSuggestionClick(product.id)}
-                            className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
-                          >
-                            <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
-                              {product.images?.[0] ? (
-                                <img
-                                  src={product.images[0]}
-                                  alt={product.title}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center text-gray-400">
-                                  📦
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">
-                                {product.title}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                ETB {product.price.toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="py-4 text-center text-gray-500">
-                          No products found for "{debouncedSearch}"
+                  {user ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-[#f73a00] text-white">
+                            {getUserInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {user.name}
+                          </p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
+                      </div>
+
+                      <Link
+                        href="/profile"
+                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <User className="h-5 w-5" />
+                        <span>Profile</span>
+                      </Link>
+
+                      <Link
+                        href="/orders"
+                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Package className="h-5 w-5" />
+                        <span>My Orders</span>
+                      </Link>
+
+                      {["ADMIN", "SUPERADMIN"].includes(user.role) && (
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-3 py-2 text-[#f73a00] font-medium"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Home className="h-5 w-5" />
+                          <span>Admin Dashboard</span>
+                        </Link>
                       )}
+
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-3 py-2 text-red-600 hover:text-red-700 w-full"
+                      >
+                        <LogOut className="h-5 w-5" />
+                        <span>Log out</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Link
+                        href="/login"
+                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <LogIn className="h-5 w-5" />
+                        <span>Sign In</span>
+                      </Link>
+
+                      <Link
+                        href="/register"
+                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <UserPlus className="h-5 w-5" />
+                        <span>Sign Up</span>
+                      </Link>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </header>
     </>

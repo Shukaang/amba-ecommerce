@@ -2,12 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/supabaseServer'
 import { withAdminAuth } from '@/lib/auth/middleware'
 
+// Helper function to update product average rating
+async function updateProductAverageRating(productId: string) {
+  const supabase = await createAdminClient()
+  const { data: ratings } = await supabase
+    .from('ratings')
+    .select('rating')
+    .eq('product_id', productId)
+    .eq('moderated', true)
+
+  const average = ratings?.length
+    ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
+    : 0
+
+  await supabase
+    .from('products')
+    .update({ average_rating: average })
+    .eq('id', productId)
+}
+
 // PATCH - Moderate rating
 async function PATCHHandler(
   request: NextRequest,
-  { params }: { params: { ratingId: string } }
+  { params }: { params: Promise<{ ratingId: string }> } 
 ) {
   try {
+    const { ratingId } = await params 
     const body = await request.json()
     const supabase = await createAdminClient()
 
@@ -15,7 +35,7 @@ async function PATCHHandler(
     const { data: rating, error: fetchError } = await supabase
       .from('ratings')
       .select('product_id')
-      .eq('id', params.ratingId)
+      .eq('id', ratingId) 
       .single()
 
     if (fetchError || !rating) {
@@ -32,10 +52,10 @@ async function PATCHHandler(
         moderated: body.moderated,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.ratingId)
+      .eq('id', ratingId) 
       .select(`
         *,
-        product:products(id, title, images),
+        product:products(id, title, images, slug),
         user:users(id, name, email)
       `)
       .single()
@@ -58,16 +78,17 @@ async function PATCHHandler(
 // DELETE - Delete rating
 async function DELETEHandler(
   request: NextRequest,
-  { params }: { params: { ratingId: string } }
+  { params }: { params: Promise<{ ratingId: string }> } 
 ) {
   try {
+    const { ratingId } = await params 
     const supabase = await createAdminClient()
 
     // Get product_id before deleting
     const { data: rating, error: fetchError } = await supabase
       .from('ratings')
       .select('product_id')
-      .eq('id', params.ratingId)
+      .eq('id', ratingId) 
       .single()
 
     if (fetchError || !rating) {
@@ -81,7 +102,7 @@ async function DELETEHandler(
     const { error: deleteError } = await supabase
       .from('ratings')
       .delete()
-      .eq('id', params.ratingId)
+      .eq('id', ratingId) 
 
     if (deleteError) throw deleteError
 
@@ -95,31 +116,6 @@ async function DELETEHandler(
       { error: error.message || 'Failed to delete rating' },
       { status: 500 }
     )
-  }
-}
-
-// Helper function to update product average rating
-async function updateProductAverageRating(productId: string) {
-  const supabase = await createAdminClient()
-
-  // Get all moderated ratings for the product
-  const { data: ratings } = await supabase
-    .from('ratings')
-    .select('rating')
-    .eq('product_id', productId)
-    .eq('moderated', true)
-
-  if (ratings && ratings.length > 0) {
-    const averageRating = ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
-    await supabase
-      .from('products')
-      .update({ average_rating: averageRating })
-      .eq('id', productId)
-  } else {
-    await supabase
-      .from('products')
-      .update({ average_rating: 0 })
-      .eq('id', productId)
   }
 }
 

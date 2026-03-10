@@ -248,17 +248,17 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
             <div className="flex-1 max-w-lg">
               <input
                 type="search"
-                placeholder="Search users..."
+                placeholder="Search users by name, email, phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border rounded-md text-sm text-gray-900 ring-2 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="flex items-center space-x-4">
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border rounded-md text-sm text-gray-900 ring ring-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Roles</option>
                 <option value="CUSTOMER">Customer</option>
@@ -270,7 +270,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border rounded-md text-sm text-gray-900 ring ring-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
                 <option value="ACTIVE">Active</option>

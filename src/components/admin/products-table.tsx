@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/context";
+import { createClient } from "@/lib/supabase/supabaseClient";
 
 interface Product {
   id: string;
@@ -94,11 +95,13 @@ export default function ProductsTable({
   categories,
 }: ProductsTableProps) {
   const { user } = useAuth();
+  const supabase = createClient();
   const isSuperAdmin = user?.role === "SUPERADMIN";
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(
@@ -111,7 +114,40 @@ export default function ProductsTable({
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, selectedStatus, sortBy]);
+
+  // Real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-products-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          // Refetch products when any change occurs
+          fetchProducts();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("/api/admin/products");
+      const data = await res.json();
+      if (res.ok) {
+        setProducts(data.products || []);
+      } else {
+        console.error("Failed to refetch products:", data.error);
+      }
+    } catch (error) {
+      console.error("Error refetching products:", error);
+    }
+  };
 
   // Build category lookup map
   const categoryMap = useMemo(() => {
@@ -188,16 +224,19 @@ export default function ProductsTable({
   const filteredProducts = useMemo(() => {
     return products
       .filter((product) => {
-        const matchesSearch =
-          product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = product.title
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
 
         const matchesCategory =
           allowedCategoryIds === null ||
           (product.categories?.id &&
             allowedCategoryIds.has(product.categories.id));
 
-        return matchesSearch && matchesCategory;
+        const matchesStatus =
+          selectedStatus === "all" || product.status === selectedStatus;
+
+        return matchesSearch && matchesCategory && matchesStatus;
       })
       .sort((a, b) => {
         switch (sortBy) {
@@ -215,7 +254,7 @@ export default function ProductsTable({
             );
         }
       });
-  }, [products, searchQuery, allowedCategoryIds, sortBy]);
+  }, [products, searchQuery, allowedCategoryIds, selectedStatus, sortBy]);
 
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
@@ -346,7 +385,7 @@ export default function ProductsTable({
       <div className="bg-white shadow-sm rounded-lg overflow-hidden">
         {/* Header with filters */}
         <div className="px-4 py-3 border-b border-gray-200">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex-1 max-w-lg">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -359,7 +398,7 @@ export default function ProductsTable({
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-gray-500" />
                 <Select
@@ -367,7 +406,7 @@ export default function ProductsTable({
                   onValueChange={setSelectedCategory}
                 >
                   <SelectTrigger className="w-36 h-8 text-sm">
-                    <SelectValue placeholder="All Categories" />
+                    <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
@@ -383,6 +422,19 @@ export default function ProductsTable({
                   </SelectContent>
                 </Select>
               </div>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-32 h-8 text-sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-32 h-8 text-sm">
                   <SelectValue placeholder="Sort by" />
@@ -406,13 +458,13 @@ export default function ProductsTable({
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Product
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                   Category
                 </th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Price
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                   Rating
                 </th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -446,27 +498,30 @@ export default function ProductsTable({
                             </div>
                           )}
                         </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                        <div className="ml-3 max-w-[120px] sm:max-w-[200px]">
+                          <div className="text-sm font-medium text-gray-900 truncate">
                             {product.title}
                           </div>
                         </div>
                         {expandedProductId === product.id ? (
-                          <ChevronUp className="ml-2 h-4 w-4 text-gray-400" />
+                          <ChevronUp className="ml-2 h-4 w-4 text-gray-400 shrink-0" />
                         ) : (
-                          <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />
+                          <ChevronDown className="ml-2 h-4 w-4 text-gray-400 shrink-0" />
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-2">
-                      <Badge variant="outline" className="text-xs">
+                    <td className="px-4 py-2 hidden md:table-cell">
+                      <Badge
+                        variant="outline"
+                        className="text-xs max-w-[150px] truncate"
+                      >
                         {getCategoryPath(product.categories?.id || null)}
                       </Badge>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       Br {product.price.toLocaleString()}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap hidden sm:table-cell">
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-gray-900 mr-1">
                           {product.average_rating.toFixed(1)}
@@ -553,32 +608,22 @@ export default function ProductsTable({
                         colSpan={6}
                         className="px-4 py-3 bg-gray-50 border-t border-gray-200"
                       >
-                        {/* Link */}
-                        {product.link && (
-                          <div>
-                            <h4 className="font-medium text-gray-700 mb-1">
-                              External Link
-                            </h4>
-                            <a
-                              href={product.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline break-all"
-                            >
-                              {product.link}
-                            </a>
-                          </div>
-                        )}
-
                         <div className="space-y-3 text-sm">
-                          <div>
-                            <h4 className="font-medium text-gray-700 mb-1">
-                              Description
-                            </h4>
-                            <p className="text-gray-600">
-                              {product.description}
-                            </p>
-                          </div>
+                          {product.link && (
+                            <div>
+                              <h4 className="font-medium text-gray-700 mb-1">
+                                External Link
+                              </h4>
+                              <a
+                                href={product.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline break-all"
+                              >
+                                {product.link}
+                              </a>
+                            </div>
+                          )}
 
                           {product.product_variants &&
                             product.product_variants.length > 0 && (
@@ -660,7 +705,9 @@ export default function ProductsTable({
             <div className="px-4 py-8 text-center">
               <div className="text-gray-400 mb-2">No products found</div>
               <p className="text-sm text-gray-500">
-                {searchQuery || selectedCategory !== "all"
+                {searchQuery ||
+                selectedCategory !== "all" ||
+                selectedStatus !== "all"
                   ? "Try changing your filters"
                   : "Add your first product to get started"}
               </p>

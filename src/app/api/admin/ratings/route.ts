@@ -10,7 +10,7 @@ async function getRatings(request: NextRequest) {
       .from("ratings")
       .select(`
         *,
-        product:products(id, title, images),
+        product:products(id, title, images, slug),
         user:users(id, name, email)
       `)
       .order("created_at", { ascending: false });

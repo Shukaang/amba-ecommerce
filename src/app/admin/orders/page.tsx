@@ -4,13 +4,13 @@ import OrdersTable from "@/components/admin/orders-table";
 export default async function AdminOrdersPage() {
   const supabase = await createAdminClient();
 
-  // Fetch orders with all related data
-  const { data: orders } = await supabase
+  const { data: orders, error } = await supabase
     .from("orders")
     .select(
       `
       *,
-      users!inner(id, name, email, phone, address),
+      users!orders_user_id_fkey(id, name, email, phone, address),
+      updated_by_user:users!orders_updated_by_fkey(id, name, email),
       order_items(
         *,
         products(*),
@@ -19,6 +19,15 @@ export default async function AdminOrdersPage() {
     `,
     )
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch orders:", error);
+    return (
+      <div className="p-8 text-center text-red-600">
+        Error loading orders: {error.message}
+      </div>
+    );
+  }
 
   return (
     <div>

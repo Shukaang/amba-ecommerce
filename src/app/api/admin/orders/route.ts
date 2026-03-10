@@ -1,29 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/db'
-import { withAuth } from '@/lib/auth/middleware'
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/supabaseServer';
+import { verifyAuth } from '@/lib/auth/middleware';
 
-// GET /api/admin/orders/route.ts - Get user's orders
-export const GET = withAuth(async (request: NextRequest) => {
+export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id')
+    const user = await verifyAuth(request);
+    if (!user || !['ADMIN', 'SUPERADMIN'].includes(user.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    const orders = await prisma.order.findMany({
-      where: { userId: userId! },
-      include: {
-        items: { 
-          include: { product: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const supabase = await createAdminClient();
 
-    return NextResponse.json(orders)
-  } catch (error) {
-    console.error('Orders fetch error:', error)
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        users!orders_user_id_fkey(id, name, email, phone, address),
+        updated_by_user:users!orders_updated_by_fkey(id, name, email),
+        order_items(
+        *,
+        products(*),
+        product_variants(*)
+        )
+        `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      orders: orders || [],
+    });
+  } catch (error: any) {
+    console.error('Admin orders fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { error: error.message || 'Failed to fetch orders' },
       { status: 500 }
-    )
+    );
   }
-})
-
+}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Bell,
   User,
@@ -54,22 +53,20 @@ export default function AdminHeader({
   const getRoleColor = (role: string) => {
     switch (role) {
       case "SUPERADMIN":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+        return "bg-purple-100 text-purple-800";
       case "ADMIN":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+        return "bg-blue-100 text-blue-800";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   if (loading) {
     return (
-      <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40">
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Loading...
-            </div>
+            <div className="text-sm text-gray-500">Loading...</div>
           </div>
         </div>
       </header>
@@ -79,26 +76,26 @@ export default function AdminHeader({
   if (!user) return null;
 
   return (
-    <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40">
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Mobile menu button */}
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-800"
+            className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
             aria-label="Toggle menu"
           >
             <Menu className="h-6 w-6" />
           </button>
 
-          {/* Right section (moved from left) */}
+          {/* Right section */}
           <div className="flex items-center space-x-4 ml-auto">
             {/* Site Button */}
             <Link href="/" target="_blank">
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden md:flex items-center gap-2 border-gray-200 dark:border-slate-700"
+                className="hidden md:flex items-center gap-2 border-gray-200"
               >
                 <Home className="h-4 w-4" />
                 <span>View Site</span>
@@ -106,9 +103,9 @@ export default function AdminHeader({
             </Link>
 
             {/* Notifications */}
-            <button className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+            <button className="relative p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900"></span>
+              <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
             </button>
 
             {/* User Dropdown */}
@@ -116,7 +113,7 @@ export default function AdminHeader({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 px-2 gap-2 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  className="relative h-10 px-2 gap-2 hover:bg-gray-100"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white">
@@ -125,18 +122,20 @@ export default function AdminHeader({
                   </Avatar>
                   <div className="hidden lg:flex items-center gap-1">
                     <div className="text-left">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <p className="text-sm font-medium text-gray-900">
                         {user?.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {user?.role}
-                      </p>
+                      <p className="text-xs text-gray-500">{user?.role}</p>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64" align="end">
+              <DropdownMenuContent
+                className="w-64 bg-white sm:w-64 max-w-[calc(100vw-2rem)]"
+                align="end"
+                sideOffset={8}
+              >
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <div className="flex items-center gap-2">
@@ -146,10 +145,10 @@ export default function AdminHeader({
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        <span className="font-semibold text-gray-900">
                           {user.name}
                         </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <span className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">
                           {user.email}
                         </span>
                       </div>
@@ -161,29 +160,35 @@ export default function AdminHeader({
                     </span>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-gray-400" />
 
                 <DropdownMenuItem asChild>
-                  <Link href="/profile" className="cursor-pointer">
+                  <Link
+                    href="/profile"
+                    className="cursor-pointer text-gray-800"
+                  >
                     <User className="mr-2 h-4 w-4" />
                     Profile Settings
                   </Link>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
-                  <Link href="/admin/settings" className="cursor-pointer">
+                  <Link
+                    href="/admin/settings"
+                    className="cursor-pointer text-gray-800"
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     Admin Settings
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-gray-400" />
 
                 <DropdownMenuItem asChild>
                   <Link
                     href="/"
                     target="_blank"
-                    className="cursor-pointer md:hidden"
+                    className="cursor-pointer text-gray-800 md:hidden"
                   >
                     <Home className="mr-2 h-4 w-4" />
                     View Site
@@ -192,7 +197,7 @@ export default function AdminHeader({
 
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="text-red-600 dark:text-red-400 cursor-pointer focus:text-red-600 dark:focus:text-red-400"
+                  className="text-red-600 cursor-pointer focus:text-red-600"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out

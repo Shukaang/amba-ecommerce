@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -14,6 +14,26 @@ import {
   ShoppingCart,
   Star,
 } from "lucide-react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+);
 
 interface AnalyticsData {
   orders: any[];
@@ -31,68 +51,92 @@ interface AnalyticsDashboardProps {
 export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState("30d");
 
-  // Calculate metrics
-  const calculateMetrics = () => {
+  // Helper to get date range based on timeRange
+  const getDateRange = (range: string) => {
     const now = new Date();
-    let startDate = new Date();
+    const currentStart = new Date();
+    const previousStart = new Date();
+    const previousEnd = new Date();
 
-    switch (timeRange) {
+    switch (range) {
       case "7d":
-        startDate.setDate(now.getDate() - 7);
+        currentStart.setDate(now.getDate() - 7);
+        previousStart.setDate(now.getDate() - 14);
+        previousEnd.setDate(now.getDate() - 7);
         break;
       case "30d":
-        startDate.setDate(now.getDate() - 30);
+        currentStart.setDate(now.getDate() - 30);
+        previousStart.setDate(now.getDate() - 60);
+        previousEnd.setDate(now.getDate() - 30);
         break;
       case "90d":
-        startDate.setDate(now.getDate() - 90);
+        currentStart.setDate(now.getDate() - 90);
+        previousStart.setDate(now.getDate() - 180);
+        previousEnd.setDate(now.getDate() - 90);
         break;
       default:
-        startDate.setDate(now.getDate() - 30);
+        currentStart.setDate(now.getDate() - 30);
+        previousStart.setDate(now.getDate() - 60);
+        previousEnd.setDate(now.getDate() - 30);
     }
+    return { currentStart, previousStart, previousEnd };
+  };
 
-    // Only include orders with status "COMPLETED" or "DELIVERED" for revenue
-    const completedOrders = data.orders.filter(
-      (order) =>
-        (order.status === "COMPLETED" || order.status === "DELIVERED") &&
-        new Date(order.created_at) >= startDate,
+  // Calculate metrics for both current and previous periods
+  const metrics = useMemo(() => {
+    const { currentStart, previousStart, previousEnd } =
+      getDateRange(timeRange);
+
+    const filterByDate = (items: any[], start: Date, end?: Date) => {
+      return items.filter((item) => {
+        const itemDate = new Date(item.created_at);
+        if (end) return itemDate >= start && itemDate < end;
+        return itemDate >= start;
+      });
+    };
+
+    // Current period
+    const currentOrders = filterByDate(data.orders, currentStart);
+    const currentCompletedOrders = currentOrders.filter(
+      (order) => order.status === "COMPLETED" || order.status === "DELIVERED",
     );
-
-    // All orders for counting
-    const filteredOrders = data.orders.filter(
-      (order) => new Date(order.created_at) >= startDate,
-    );
-
-    const filteredUsers = data.users.filter(
-      (user) => new Date(user.created_at) >= startDate,
-    );
-
-    // Only use completed/delivered orders for revenue
-    const totalRevenue = completedOrders.reduce(
+    const currentRevenue = currentCompletedOrders.reduce(
       (sum, order) => sum + parseFloat(order.total_price),
       0,
     );
-
-    const totalCompletedOrders = completedOrders.length;
-    const avgOrderValue =
-      completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
-
-    const customerUsers = filteredUsers.filter(
+    const currentUsers = filterByDate(data.users, currentStart).filter(
       (user) => user.role === "CUSTOMER",
     ).length;
-    const adminUsers = filteredUsers.filter(
-      (user) => user.role === "ADMIN" || user.role === "SUPERADMIN",
+    const currentVisitors = filterByDate(
+      data.visitorStats,
+      currentStart,
     ).length;
 
-    const totalProducts = data.products.length;
-    const avgProductRating =
-      data.products.length > 0
-        ? data.products.reduce(
-            (sum, product) => sum + (product.average_rating || 0),
-            0,
-          ) / data.products.length
-        : 0;
+    // Previous period
+    const prevOrders = filterByDate(data.orders, previousStart, previousEnd);
+    const prevCompletedOrders = prevOrders.filter(
+      (order) => order.status === "COMPLETED" || order.status === "DELIVERED",
+    );
+    const prevRevenue = prevCompletedOrders.reduce(
+      (sum, order) => sum + parseFloat(order.total_price),
+      0,
+    );
+    const prevUsers = filterByDate(
+      data.users,
+      previousStart,
+      previousEnd,
+    ).filter((user) => user.role === "CUSTOMER").length;
+    const prevVisitors = filterByDate(
+      data.visitorStats,
+      previousStart,
+      previousEnd,
+    ).length;
 
-    // Calculate visitor stats
+    // All-time totals
+    const totalCustomers = data.users.filter(
+      (u) => u.role === "CUSTOMER",
+    ).length;
+    const totalProducts = data.products.length;
     const totalVisitors = data.visitorStats.length;
     const totalPageViews = data.visitorStats.reduce(
       (sum, visit) => sum + (visit.pages_visited?.length || 0),
@@ -103,72 +147,96 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
       0,
     );
 
+    const avgOrderValue =
+      currentCompletedOrders.length > 0
+        ? currentRevenue / currentCompletedOrders.length
+        : 0;
+
+    const avgProductRating =
+      data.products.length > 0
+        ? data.products.reduce(
+            (sum, product) => sum + (product.average_rating || 0),
+            0,
+          ) / data.products.length
+        : 0;
+
+    const conversionRate =
+      totalVisitors > 0
+        ? (currentCompletedOrders.length / totalVisitors) * 100
+        : 0;
+    const revenueChange =
+      prevRevenue === 0
+        ? currentRevenue > 0
+          ? 100
+          : 0
+        : ((currentRevenue - prevRevenue) / prevRevenue) * 100;
+    const ordersChange =
+      prevCompletedOrders.length === 0
+        ? currentCompletedOrders.length > 0
+          ? 100
+          : 0
+        : ((currentCompletedOrders.length - prevCompletedOrders.length) /
+            prevCompletedOrders.length) *
+          100;
+    const customersChange =
+      prevUsers === 0
+        ? currentUsers > 0
+          ? 100
+          : 0
+        : ((currentUsers - prevUsers) / prevUsers) * 100;
+    const aovChange =
+      prevRevenue === 0 || prevCompletedOrders.length === 0
+        ? avgOrderValue > 0
+          ? 100
+          : 0
+        : ((avgOrderValue - prevRevenue / prevCompletedOrders.length) /
+            (prevRevenue / prevCompletedOrders.length)) *
+          100;
+
     return {
-      totalRevenue,
-      totalOrders: filteredOrders.length,
-      totalCompletedOrders,
+      revenue: currentRevenue,
+      revenueChange,
+      completedOrders: currentCompletedOrders.length,
+      ordersChange,
+      totalOrders: currentOrders.length,
+      newCustomers: currentUsers,
+      customersChange,
+      totalCustomers,
       avgOrderValue,
-      newCustomers: customerUsers,
-      totalCustomers: data.users.filter((u) => u.role === "CUSTOMER").length,
-      adminUsers,
+      aovChange,
       totalProducts,
       avgProductRating,
       totalVisitors,
       totalPageViews,
       totalProductClicks,
-      conversionRate:
-        totalVisitors > 0 ? (filteredOrders.length / totalVisitors) * 100 : 0,
+      conversionRate,
+      pendingOrders: data.orders.filter((o) => o.status === "PENDING").length,
     };
-  };
+  }, [data, timeRange]);
 
-  const metrics = calculateMetrics();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat("en-US").format(num);
-  };
-
-  const getTrendIcon = (current: number, previous: number) => {
-    return current >= previous ? (
-      <TrendingUp className="h-4 w-4 text-green-500" />
-    ) : (
-      <TrendingDown className="h-4 w-4 text-red-500" />
-    );
-  };
-
-  // Generate 6-month revenue chart data
-  const generateSixMonthRevenueData = () => {
+  // Generate 6-month revenue data for chart
+  const revenueChartData = useMemo(() => {
     const monthsData = [];
     const currentDate = new Date();
 
-    // Get the last 6 months
     for (let i = 5; i >= 0; i--) {
       const date = new Date();
       date.setMonth(currentDate.getMonth() - i);
-
       const year = date.getFullYear();
-      const month = date.getMonth() + 1; // getMonth() returns 0-11
+      const month = date.getMonth();
       const monthName = date.toLocaleDateString("en-US", { month: "short" });
 
-      // Create start and end dates for this month
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
-      // Filter ONLY completed/delivered orders for this month
       const monthlyRevenue = data.orders
         .filter((order) => {
           const orderDate = new Date(order.created_at);
-          const isInDateRange = orderDate >= startDate && orderDate <= endDate;
-          const isCompleted =
-            order.status === "COMPLETED" || order.status === "DELIVERED";
-          return isInDateRange && isCompleted;
+          return (
+            orderDate >= startDate &&
+            orderDate <= endDate &&
+            (order.status === "COMPLETED" || order.status === "DELIVERED")
+          );
         })
         .reduce((sum, order) => sum + parseFloat(order.total_price), 0);
 
@@ -179,19 +247,71 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           year: "numeric",
         }),
         revenue: monthlyRevenue,
-        year: year,
-        monthIndex: month,
+        year,
       });
     }
-
     return monthsData;
+  }, [data.orders]);
+
+  // Chart.js data object
+  const chartData = {
+    labels: revenueChartData.map((d) => d.month),
+    datasets: [
+      {
+        label: "Revenue (ETB)",
+        data: revenueChartData.map((d) => d.revenue),
+        backgroundColor: "#f73a00",
+        borderColor: "rgba(247, 58, 0, 0.7)",
+        borderWidth: 1,
+      },
+    ],
   };
 
-  const revenueChartData = generateSixMonthRevenueData();
-  const maxRevenue = Math.max(...revenueChartData.map((d) => d.revenue), 1);
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (ctx: any) => `$${ctx.raw.toFixed(2)}` } },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { callback: (value: any) => `$${value}` },
+      },
+    },
+  };
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "ETB",
+      minimumFractionDigits: 2,
+    }).format(amount);
+
+  const formatNumber = (num: number) =>
+    new Intl.NumberFormat("en-US").format(num);
+
+  const formatPercent = (value: number) => {
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(1)}%`;
+  };
+
+  const getTrendIcon = (change: number) => {
+    if (change > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
+    if (change < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
+    return null;
+  };
+
+  const getTrendColor = (change: number) =>
+    change > 0
+      ? "text-green-600"
+      : change < 0
+        ? "text-red-600"
+        : "text-gray-600";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mb-10">
       {/* Time Range Selector */}
       <div className="flex justify-end">
         <div className="inline-flex rounded-lg border border-gray-200 p-1">
@@ -214,49 +334,53 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Revenue Card */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
               <DollarSign className="h-6 w-6 text-blue-600" />
             </div>
-            {getTrendIcon(metrics.totalRevenue, metrics.totalRevenue * 0.9)}
+            {getTrendIcon(metrics.revenueChange)}
           </div>
           <h3 className="text-2xl font-bold text-gray-900">
-            {formatCurrency(metrics.totalRevenue)}
+            {formatCurrency(metrics.revenue)}
           </h3>
-          <p className="text-sm text-gray-600 mt-1">Total Revenue</p>
-          <div className="mt-2 text-sm text-green-600">
-            +12.5% from last period
+          <p className="text-sm text-gray-600 mt-1">Revenue</p>
+          <div
+            className={`mt-2 text-sm ${getTrendColor(metrics.revenueChange)}`}
+          >
+            {formatPercent(metrics.revenueChange)} from previous period
           </div>
         </div>
 
         {/* Orders Card */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-green-100 rounded-lg">
               <ShoppingBag className="h-6 w-6 text-green-600" />
             </div>
-            {getTrendIcon(
-              metrics.totalCompletedOrders,
-              metrics.totalCompletedOrders * 0.9,
-            )}
+            {getTrendIcon(metrics.ordersChange)}
           </div>
           <h3 className="text-2xl font-bold text-gray-900">
-            {formatNumber(metrics.totalCompletedOrders)}
+            {formatNumber(metrics.completedOrders)}
           </h3>
           <p className="text-sm text-gray-600 mt-1">Completed Orders</p>
           <div className="mt-2 text-sm text-gray-600">
             {formatNumber(metrics.totalOrders)} total orders
           </div>
+          <div
+            className={`mt-1 text-xs ${getTrendColor(metrics.ordersChange)}`}
+          >
+            {formatPercent(metrics.ordersChange)} from previous
+          </div>
         </div>
 
         {/* Customers Card */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Users className="h-6 w-6 text-purple-600" />
             </div>
-            {getTrendIcon(metrics.newCustomers, metrics.newCustomers * 0.9)}
+            {getTrendIcon(metrics.customersChange)}
           </div>
           <h3 className="text-2xl font-bold text-gray-900">
             {formatNumber(metrics.newCustomers)}
@@ -265,30 +389,35 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           <div className="mt-2 text-sm text-gray-600">
             {formatNumber(metrics.totalCustomers)} total
           </div>
+          <div
+            className={`mt-1 text-xs ${getTrendColor(metrics.customersChange)}`}
+          >
+            {formatPercent(metrics.customersChange)} from previous
+          </div>
         </div>
 
         {/* AOV Card */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-orange-100 rounded-lg">
               <BarChart3 className="h-6 w-6 text-orange-600" />
             </div>
-            {getTrendIcon(metrics.avgOrderValue, metrics.avgOrderValue * 0.9)}
+            {getTrendIcon(metrics.aovChange)}
           </div>
           <h3 className="text-2xl font-bold text-gray-900">
             {formatCurrency(metrics.avgOrderValue)}
           </h3>
           <p className="text-sm text-gray-600 mt-1">Avg. Order Value</p>
-          <div className="mt-2 text-sm text-green-600">
-            +8.2% from last period
+          <div className={`mt-2 text-sm ${getTrendColor(metrics.aovChange)}`}>
+            {formatPercent(metrics.aovChange)} from previous
           </div>
         </div>
       </div>
 
       {/* Charts and Detailed Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Chart - Fixed 6 months */}
-        <div className="lg:col-span-2 bg-white rounded-xl border p-6">
+        {/* Revenue Chart - 6 months (Chart.js) */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">
               6-Month Revenue Trend
@@ -296,46 +425,12 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
           <div className="h-64">
-            <div className="flex items-end h-48 space-x-2">
-              {revenueChartData.map((monthData, index) => (
-                <div
-                  key={`month-${index}-${monthData.month}`}
-                  className="flex-1 flex flex-col items-center"
-                >
-                  <div className="relative w-full flex justify-center">
-                    <div
-                      className="w-10 bg-linear-to-t from-blue-500 to-blue-600 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-700 cursor-pointer"
-                      style={{
-                        height: `${(monthData.revenue / maxRevenue) * 80}%`,
-                      }}
-                      title={`${monthData.fullMonth}: ${formatCurrency(monthData.revenue)}`}
-                    />
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2 font-medium">
-                    {monthData.month}
-                  </div>
-                  {monthData.year !== revenueChartData[index - 1]?.year && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      {monthData.year}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-6 text-sm text-gray-600">
-              <span>
-                {revenueChartData[0]?.month} {revenueChartData[0]?.year}
-              </span>
-              <span>
-                {revenueChartData[revenueChartData.length - 1]?.month}{" "}
-                {revenueChartData[revenueChartData.length - 1]?.year}
-              </span>
-            </div>
+            <Bar data={chartData} options={chartOptions} />
           </div>
         </div>
 
         {/* Top Products */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">
             Top Rated Products
           </h3>
@@ -345,9 +440,13 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                 key={`product-${product.id || index}`}
                 className="flex items-center"
               >
-                <div className="shrink-0 h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                <div className="shrink-0 h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
                   {product.images && product.images.length > 0 ? (
-                    <img src={product.images[0]} alt="Product image" />
+                    <img
+                      src={product.images[0]}
+                      alt={product.title}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <Package className="h-5 w-5 text-gray-400" />
                   )}
@@ -357,7 +456,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                     {product.title}
                   </div>
                   <div className="flex items-center text-sm text-gray-500">
-                    <Star className="h-3 w-3 text-yellow-400 mr-1" />
+                    <Star className="h-3 w-3 text-[#f73a00] mr-1" />
                     {product.average_rating?.toFixed(1) || "0.0"}
                   </div>
                 </div>
@@ -373,7 +472,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Product Stats */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center mb-4">
             <Package className="h-5 w-5 text-gray-400 mr-2" />
             <h3 className="text-lg font-semibold text-gray-900">
@@ -383,25 +482,25 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Total Products</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {formatNumber(metrics.totalProducts)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Avg. Rating</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {metrics.avgProductRating.toFixed(1)}/5.0
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Categories</span>
-              <span className="text-sm font-medium">12</span>
+              <span className="text-sm font-medium text-gray-900">12</span>
             </div>
           </div>
         </div>
 
         {/* Visitor Stats */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center mb-4">
             <Eye className="h-5 w-5 text-gray-400 mr-2" />
             <h3 className="text-lg font-semibold text-gray-900">
@@ -411,19 +510,19 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Total Visitors</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {formatNumber(metrics.totalVisitors)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Page Views</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {formatNumber(metrics.totalPageViews)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Product Clicks</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {formatNumber(metrics.totalProductClicks)}
               </span>
             </div>
@@ -431,7 +530,7 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
         </div>
 
         {/* Conversion Stats */}
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center mb-4">
             <ShoppingCart className="h-5 w-5 text-gray-400 mr-2" />
             <h3 className="text-lg font-semibold text-gray-900">
@@ -441,88 +540,23 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Conversion Rate</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-gray-900">
                 {metrics.conversionRate.toFixed(1)}%
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Completed Orders</span>
-              <span className="text-sm font-medium">
-                {formatNumber(metrics.totalCompletedOrders)}
+              <span className="text-sm font-medium text-gray-900">
+                {formatNumber(metrics.completedOrders)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Pending Orders</span>
-              <span className="text-sm font-medium">
-                {formatNumber(
-                  data.orders.filter((o) => o.status === "PENDING").length,
-                )}
+              <span className="text-sm font-medium text-gray-900">
+                {formatNumber(metrics.pendingOrders)}
               </span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Orders */}
-      <div className="bg-white rounded-xl border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">
-          Recent Orders
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order #
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {data.recentOrders.slice(0, 5).map((order, index) => (
-                <tr key={`order-${order.id || order.order_number || index}`}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {order.order_number}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {order.users?.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {formatCurrency(order.total_price)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        order.status === "COMPLETED"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "PENDING"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : order.status === "SHIPPED"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ export async function sendOtpEmail({
       <div style="background-color: #f9f9f9; padding: 30px 20px; border: 1px solid #eaeaea; border-top: none;">
         <p style="font-size: 16px;">Hello <strong>${name}</strong>,</p>
         <p>We received a request to reset your password. Use the following OTP code to proceed:</p>
-        <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 36px; font-weight: bold; border-radius: 8px; margin: 20px 0;">
+        <div style="background-color: #f3f4f6; padding: 20px; text-align: center; letter-spacing: 10px; font-size: 36px; font-weight: bold; border-radius: 8px; margin: 20px 0;">
           ${otp}
         </div>
         <p>This code will expire in <strong>10 minutes</strong>.</p>

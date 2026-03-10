@@ -15,7 +15,7 @@ export default async function AdminRatingsPage() {
     .select(
       `
       *,
-      product:products(id, title, images),
+      product:products(id, title, images, slug),
       user:users(id, name, email)
     `,
     )
