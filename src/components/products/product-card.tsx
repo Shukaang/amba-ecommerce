@@ -9,6 +9,7 @@ import { useCart } from "@/lib/cart/context";
 import { useAuth } from "@/lib/auth/context";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useTrackProduct } from "@/hooks/useTrackProduct";
 
 interface Product {
   id: string;
@@ -41,22 +42,17 @@ export default function PremiumProductCard({
   const { addToCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
+  const trackProduct = useTrackProduct();
 
   const mainImage = product.images?.[0];
   const secondaryImage = product.images?.[1] || mainImage;
 
-  // Safely handle variants
   const variantPrices = product.product_variants?.map((v) => v.price) ?? [];
   const hasVariants = variantPrices.length > 0;
   const minPrice = hasVariants
     ? Math.min(...variantPrices, product.price)
     : product.price;
 
-  /**
-   * createCartAnimation
-   * - startRect MUST be a real DOMRect (not a union).
-   * - This function always works with DOMRect instances (no unions).
-   */
   const createCartAnimation = (startRect: DOMRect) => {
     const animationEl = document.createElement("div");
     animationEl.className = "fixed z-[100] pointer-events-none";
@@ -68,10 +64,8 @@ export default function PremiumProductCard({
       </div>
     `;
 
-    // Append animation element container (if it exists)
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
 
-    // Find the first visible cart link
     const cartLinks = document.querySelectorAll('a[href="/cart"]');
     let cartIcon: Element | null = null;
     for (const link of cartLinks) {
@@ -89,7 +83,6 @@ export default function PremiumProductCard({
       endRect = new DOMRect(window.innerWidth - 100, 80, 40, 40);
     }
 
-    // Now these are guaranteed DOMRect properties (width/height exist)
     const startX = startRect.left + startRect.width / 2 - 20;
     const startY = startRect.top + startRect.height / 2 - 20;
     const endX = endRect.left + endRect.width / 2 - 20;
@@ -103,7 +96,6 @@ export default function PremiumProductCard({
       transition: "all 800ms cubic-bezier(0.68, -0.55, 0.265, 1.55)",
     });
 
-    // animate
     setTimeout(() => {
       Object.assign(animationEl.style, {
         transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0.5)`,
@@ -111,16 +103,13 @@ export default function PremiumProductCard({
       });
     }, 10);
 
-    setTimeout(() => {
-      animationEl.remove();
-    }, 800);
+    setTimeout(() => animationEl.remove(), 800);
   };
 
-  /**
-   * handleAddToCart
-   * - Cast e.currentTarget to HTMLElement and then convert its rect to a real DOMRect
-   * - This avoids any DOMRect | { left, top } union widening by TypeScript
-   */
+  const handleCardClick = () => {
+    trackProduct(product.id, "view");
+  };
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -130,7 +119,6 @@ export default function PremiumProductCard({
       return;
     }
 
-    // If product has variants, redirect to detail page to select variant
     if (hasVariants) {
       router.push(`/products/${product.slug}`);
       return;
@@ -138,12 +126,12 @@ export default function PremiumProductCard({
 
     setIsAdding(true);
     try {
-      // Force a real DOMRect by constructing one from the element's rect
       const currentEl = e.currentTarget as HTMLElement;
       const r = currentEl.getBoundingClientRect();
       const buttonRect = new DOMRect(r.x, r.y, r.width, r.height);
 
       createCartAnimation(buttonRect);
+      trackProduct(product.id, "add_to_cart");
 
       await addToCart({
         productId: product.id,
@@ -152,9 +140,7 @@ export default function PremiumProductCard({
         price: minPrice,
       });
 
-      setTimeout(() => {
-        setIsAdding(false);
-      }, 800);
+      setTimeout(() => setIsAdding(false), 800);
     } catch (error: any) {
       toast.error(error?.message || "Failed to add to cart");
       setIsAdding(false);
@@ -163,7 +149,9 @@ export default function PremiumProductCard({
 
   const toggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
+    if (!isWishlisted) {
+      trackProduct(product.id, "add_to_wishlist");
+    }
     setIsWishlisted(!isWishlisted);
     toast.success(
       isWishlisted ? "Removed from wishlist" : "Added to wishlist!",
@@ -171,15 +159,14 @@ export default function PremiumProductCard({
   };
 
   return (
-    <Link href={`/products/${product.slug}`}>
+    <Link href={`/products/${product.slug}`} onClick={handleCardClick}>
       <div
         className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer flex flex-col h-full"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Image Container */}
+        {/* Image container, etc. – unchanged */}
         <div className="relative aspect-[4/4] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-          {/* Main Image */}
           <div
             className={`absolute inset-0 transition-opacity duration-700 ${
               isHovered && secondaryImage !== mainImage
@@ -191,28 +178,22 @@ export default function PremiumProductCard({
               src={mainImage}
               alt={product.title}
               className="w-full h-full object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>
-
-          {/* Secondary Image */}
           {secondaryImage !== mainImage && (
             <div
-              className={`absolute inset-0 transition-opacity duration-700 ${isHovered ? "opacity-100" : "opacity-0"}`}
+              className={`absolute inset-0 transition-opacity duration-700 ${
+                isHovered ? "opacity-100" : "opacity-0"
+              }`}
             >
               <img
                 src={secondaryImage}
                 alt={product.title}
                 className="w-full h-full object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
           )}
-
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-          {/* Badges - always visible on left */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
             {product.average_rating >= 4.5 && (
               <Badge className="bg-[#f73a00] hover:bg-[#fe4208] text-white text-sm border-0 shadow-md">
@@ -220,8 +201,6 @@ export default function PremiumProductCard({
               </Badge>
             )}
           </div>
-
-          {/* Wishlist Button */}
           <div
             className={`
               absolute top-4 right-4 flex-col gap-2 z-10
@@ -237,12 +216,14 @@ export default function PremiumProductCard({
               }
             >
               <Heart
-                className={`h-5 w-5 ${isWishlisted ? "fill-[#f73a00] text-[#f73a00]" : "text-[#f73a00]"}`}
+                className={`h-5 w-5 ${
+                  isWishlisted
+                    ? "fill-[#f73a00] text-[#f73a00]"
+                    : "text-[#f73a00]"
+                }`}
               />
             </button>
           </div>
-
-          {/* Quick Add Button */}
           <div
             className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
           >
@@ -257,20 +238,20 @@ export default function PremiumProductCard({
             </Button>
           </div>
         </div>
-
-        {/* Product Info */}
         <div className="py-2 px-2 flex-1">
           <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-[#f73a00] transition-colors">
             {product.title}
           </h3>
-
-          {/* Rating */}
           <div className="flex items-center gap-2 mb-2">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`h-4 w-4 ${star <= Math.round(product.average_rating) ? "fill-[#f73a00] text-[#f73a00]" : "fill-gray-200 text-gray-200"}`}
+                  className={`h-4 w-4 ${
+                    star <= Math.round(product.average_rating)
+                      ? "fill-[#f73a00] text-[#f73a00]"
+                      : "fill-gray-200 text-gray-200"
+                  }`}
                 />
               ))}
             </div>
@@ -278,15 +259,12 @@ export default function PremiumProductCard({
               {product.average_rating.toFixed(1)}
             </span>
           </div>
-
-          {/* Price */}
           <div className="flex items-center justify-between">
             <div>
               <span className="text-lg font-bold text-gray-900">
                 Br {minPrice.toLocaleString("en-US")}
               </span>
             </div>
-
             <Button
               variant="ghost"
               size="sm"

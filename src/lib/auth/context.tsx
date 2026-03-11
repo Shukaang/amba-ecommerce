@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getSessionId } from "../tracking/session";
 
 interface User {
   id: string;
@@ -100,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userRes = await fetch("/api/auth/me");
       if (userRes.ok) {
         const userData = await userRes.json();
-        console.log("Complete user data after login:", userData.user);
 
         setUser({
           id: userData.user.id,
@@ -113,6 +113,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           created_at: userData.user.created_at,
           updated_at: userData.user.updated_at,
         });
+        // After setting user
+        const sessionId = getSessionId(); // from '@/lib/tracking/session'
+        if (sessionId) {
+          fetch("/api/track/identify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId, userId: userData.user.id }),
+          }).catch(console.error);
+        }
       } else {
         // Fallback to login response data
         setUser({
@@ -127,7 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updated_at: new Date().toISOString(),
         });
       }
-
       toast.success("Login successful!");
 
       // Redirect based on priority:

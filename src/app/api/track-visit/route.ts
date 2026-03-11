@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { UAParser } from 'ua-parser-js';
 
+// api/track-visit/route.ts
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, userId } = await request.json();

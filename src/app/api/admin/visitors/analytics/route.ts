@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { withSuperAdminAuth } from '@/lib/auth/middleware';
 
+// api/admin/visitors/analytics/route.ts
 export async function GET(request: NextRequest) {
   return withSuperAdminAuth(async () => {
     try {

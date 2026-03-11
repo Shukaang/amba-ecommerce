@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { withSuperAdminAuth } from '@/lib/auth/middleware';
 
+
+// api/admin/visitors/[id]/route.ts
 // DELETE visitor session
 export async function DELETE(
   request: NextRequest,

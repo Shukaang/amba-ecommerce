@@ -14,57 +14,61 @@ export default async function AdminDashboard() {
       productsCount,
       usersCount,
       pendingOrdersCount,
-      superAdminCount, // ADD THIS: Count SUPERADMIN users
-      recentOrdersData,
-      recentProductsData,
-      recentActivityData,
+      superAdminCount,
+      recentOrdersResult,
+      recentProductsResult,
+      recentActivityResult,
     ] = await Promise.all([
-      // Total orders
       supabase.from("orders").select("*", { count: "exact", head: true }),
-      // Total products
       supabase.from("products").select("*", { count: "exact", head: true }),
-      // Total users
       supabase.from("users").select("*", { count: "exact", head: true }),
-      // Pending orders
       supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
         .eq("status", "PENDING"),
-      // ADD THIS: Count SUPERADMIN users
       supabase
         .from("users")
         .select("*", { count: "exact", head: true })
         .eq("role", "SUPERADMIN"),
-      // Recent orders with user names
+      // Recent orders – use explicit foreign key for users
       supabase
         .from("orders")
         .select(
           `
-      *,
-      users!inner(id, name, email),
-      order_items(
-        id,
-        quantity,
-        price,
-        products(title)
-      )
-    `,
+          *,
+          users!orders_user_id_fkey(id, name, email),
+          order_items(
+            id,
+            quantity,
+            price,
+            products(title)
+          )
+        `,
         )
         .order("created_at", { ascending: false })
-        .limit(10),
-      // Recently added products
+        .limit(5),
       supabase
         .from("products")
         .select("id, title, price, average_rating, images, created_at")
         .order("created_at", { ascending: false })
         .limit(5),
-      // Recent user activity
       supabase
         .from("users")
         .select("id, name, email, role, created_at")
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
+
+    // Log any errors for debugging
+    if (recentOrdersResult.error) {
+      console.error("Recent orders error:", recentOrdersResult.error);
+    }
+    if (recentProductsResult.error) {
+      console.error("Recent products error:", recentProductsResult.error);
+    }
+    if (recentActivityResult.error) {
+      console.error("Recent activity error:", recentActivityResult.error);
+    }
 
     return (
       <div>
@@ -89,15 +93,15 @@ export default async function AdminDashboard() {
         {/* Grid Layout */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Orders */}
-          <RecentOrders orders={recentOrdersData.data || []} />
+          <RecentOrders orders={recentOrdersResult.data || []} />
 
           {/* Recent Products */}
-          <RecentProducts products={recentProductsData.data || []} />
+          <RecentProducts products={recentProductsResult.data || []} />
         </div>
 
         {/* User Activity */}
         <div className="mt-8">
-          <UserActivity users={recentActivityData.data || []} />
+          <UserActivity users={recentActivityResult.data || []} />
         </div>
       </div>
     );

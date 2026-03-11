@@ -13,19 +13,13 @@ import {
   Calendar,
   FileText,
   Trash2,
+  MapPin,
+  Package,
+  Eye,
+  ShoppingCart,
+  Heart,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface Visitor {
-  id: string;
-  session_id: string;
-  user_id: string;
-  users?: { email: string; name: string };
-  ip_address: string;
-  device_info: string;
-  visited_at: string;
-  updated_at: string;
-}
+import { Visitor } from "@/types/visitor";
 
 interface ExpandableVisitorRowProps {
   visitor: Visitor;
@@ -39,16 +33,8 @@ export function ExpandableVisitorRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Format duration
-  const getDuration = (visitedAt: string) => {
-    const now = new Date();
-    const visited = new Date(visitedAt);
-    const diff = Math.floor((now.getTime() - visited.getTime()) / 1000);
-    return diff < 60 ? `${diff}s` : `${Math.floor(diff / 60)}m ${diff % 60}s`;
-  };
-
-  // Get browser info
-  const getBrowserInfo = (deviceInfo: string) => {
+  const getBrowserInfo = (deviceInfo: string | null) => {
+    if (!deviceInfo) return "Unknown";
     if (deviceInfo.includes("Chrome")) return "Chrome";
     if (deviceInfo.includes("Firefox")) return "Firefox";
     if (deviceInfo.includes("Safari")) return "Safari";
@@ -56,35 +42,36 @@ export function ExpandableVisitorRow({
     return "Unknown";
   };
 
-  // Get device type
-  const getDeviceType = (deviceInfo: string) => {
+  const getDeviceType = (deviceInfo: string | null) => {
+    if (!deviceInfo) return "Unknown";
     if (/mobile|android|iphone/i.test(deviceInfo)) return "Mobile";
     if (/tablet|ipad/i.test(deviceInfo)) return "Tablet";
     return "Desktop";
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this visitor session?")) return;
-
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/admin/visitors/${visitor.id}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        onDelete(visitor.id);
-      }
-    } catch (error) {
-      console.error("Delete failed:", error);
-    } finally {
-      setDeleting(false);
-    }
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return "0s";
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
+
+  const handleDeleteClick = () => {
+    setDeleting(true);
+    onDelete(visitor.id);
+    setDeleting(false);
+  };
+
+  const viewClicks =
+    visitor.product_clicks?.filter((c) => c.type === "view") || [];
+  const cartClicks =
+    visitor.product_clicks?.filter((c) => c.type === "add_to_cart") || [];
+  const wishlistClicks =
+    visitor.product_clicks?.filter((c) => c.type === "add_to_wishlist") || [];
 
   return (
     <>
-      {/* Main Row */}
       <TableRow className="cursor-pointer hover:bg-gray-50">
         <TableCell onClick={() => setIsExpanded(!isExpanded)}>
           <div className="flex items-center gap-2">
@@ -123,8 +110,15 @@ export function ExpandableVisitorRow({
         </TableCell>
         <TableCell onClick={() => setIsExpanded(!isExpanded)}>
           <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-blue-600" />
-            <span className="font-mono text-sm">{visitor.ip_address}</span>
+            <MapPin className="h-4 w-4 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">
+                {visitor.country || "Unknown"}
+              </div>
+              {visitor.city && (
+                <div className="text-xs text-gray-500">{visitor.city}</div>
+              )}
+            </div>
           </div>
         </TableCell>
         <TableCell onClick={() => setIsExpanded(!isExpanded)}>
@@ -158,7 +152,7 @@ export function ExpandableVisitorRow({
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             disabled={deleting}
             className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
           >
@@ -167,98 +161,161 @@ export function ExpandableVisitorRow({
         </TableCell>
       </TableRow>
 
-      {/* Expanded Details Row */}
       {isExpanded && (
         <TableRow className="bg-gray-50">
           <TableCell colSpan={6} className="p-0">
-            <div className="p-4 border-t">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                {/* Session Info */}
+            <div className="p-4 border-t space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Session Details
+                    <MapPin className="h-4 w-4" /> Location
+                  </h4>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Country:</span>
+                      <span>{visitor.country || "Unknown"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">City:</span>
+                      <span>{visitor.city || "Unknown"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Region:</span>
+                      <span>{visitor.region || "Unknown"}</span>
+                    </div>
+                    {visitor.latitude && visitor.longitude && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Coordinates:</span>
+                        <span className="font-mono text-xs">
+                          {visitor.latitude.toFixed(2)},{" "}
+                          {visitor.longitude.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Session
                   </h4>
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Session ID:</span>
-                      <span className="font-mono text-xs truncate max-w-120">
-                        {visitor.session_id.substring(0, 12)}...
+                      <span className="font-mono text-xs">
+                        {visitor.session_id}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Duration:</span>
-                      <span>{getDuration(visitor.visited_at)}</span>
+                      <span>{formatDuration(visitor.duration)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Last Active:</span>
                       <span>
-                        {visitor.updated_at &&
-                        visitor.updated_at !== "Invalid Date"
-                          ? new Date(visitor.updated_at).toLocaleTimeString()
-                          : new Date(visitor.visited_at).toLocaleTimeString()}
+                        {new Date(visitor.updated_at).toLocaleString()}
                       </span>
                     </div>
                   </div>
                 </div>
-
-                {/* User Info */}
                 <div className="space-y-2">
                   <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    User Information
+                    <User className="h-4 w-4" /> User
                   </h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span>
-                        {visitor.users ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            Registered
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Guest</Badge>
-                        )}
-                      </span>
+                  {visitor.users ? (
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Name:</span>
+                        <span>{visitor.users.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email:</span>
+                        <span>{visitor.users.email}</span>
+                      </div>
                     </div>
-                    {visitor.users && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Name:</span>
-                          <span>{visitor.users.name}</span>
+                  ) : (
+                    <p className="text-sm text-gray-500">Guest user</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                  <Package className="h-4 w-4" /> Product Interactions
+                </h4>
+                {visitor.product_clicks && visitor.product_clicks.length > 0 ? (
+                  <div className="space-y-3">
+                    {viewClicks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                          <Eye className="h-3 w-3" /> Views ({viewClicks.length}
+                          )
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Email:</span>
-                          <span>{visitor.users.email}</span>
+                        <div className="flex flex-wrap gap-2">
+                          {viewClicks.map((click, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              {click.product_title ||
+                                `Product ${click.product_id.substring(0, 6)}...`}{" "}
+                              at{" "}
+                              {new Date(click.timestamp).toLocaleTimeString()}
+                            </Badge>
+                          ))}
                         </div>
-                      </>
+                      </div>
+                    )}
+                    {cartClicks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                          <ShoppingCart className="h-3 w-3" /> Added to Cart (
+                          {cartClicks.length})
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {cartClicks.map((click, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="bg-green-50 text-green-700 border-green-200"
+                            >
+                              {click.product_title ||
+                                `Product ${click.product_id.substring(0, 6)}...`}{" "}
+                              at{" "}
+                              {new Date(click.timestamp).toLocaleTimeString()}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {wishlistClicks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                          <Heart className="h-3 w-3" /> Added to Wishlist (
+                          {wishlistClicks.length})
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {wishlistClicks.map((click, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="bg-red-50 text-red-700 border-red-200"
+                            >
+                              {click.product_title ||
+                                `Product ${click.product_id.substring(0, 6)}...`}{" "}
+                              at{" "}
+                              {new Date(click.timestamp).toLocaleTimeString()}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {/* Device Info */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
-                    Device Information
-                  </h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Browser:</span>
-                      <span>{getBrowserInfo(visitor.device_info)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Device:</span>
-                      <span>{getDeviceType(visitor.device_info)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">IP Address:</span>
-                      <span className="font-mono text-xs">
-                        {visitor.ip_address}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No product interactions
+                  </p>
+                )}
               </div>
             </div>
           </TableCell>

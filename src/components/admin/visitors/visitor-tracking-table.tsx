@@ -12,30 +12,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Search,
-  Filter,
   Download,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ExpandableVisitorRow } from "./expandable-visitor-row";
-import { createClient } from "@/lib/supabase/supabaseClient";
 
 interface Visitor {
   id: string;
   session_id: string;
-  user_id: string;
-  users?: { email: string; name: string };
-  ip_address: string;
-  device_info: string;
+  user_id: string | null;
+  users?: { email: string; name: string } | null;
+  device_info: string | null;
   visited_at: string;
   updated_at: string;
+  country: string | null;
+  city: string | null;
+  region: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  product_clicks: any | null;
+  duration: number | null;
 }
 
 export function VisitorTrackingTable() {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
-  const [filteredVisitors, setFilteredVisitors] = useState<Visitor[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,7 +55,10 @@ export function VisitorTrackingTable() {
   const [filter, setFilter] = useState<"all" | "registered" | "anonymous">(
     "all",
   );
-  const [bulkDelete, setBulkDelete] = useState<string[]>([]);
+
+  // Delete confirmation state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchVisitors = useCallback(
     async (pageNum = 1) => {
@@ -68,9 +83,7 @@ export function VisitorTrackingTable() {
         const data = await response.json();
 
         setVisitors(data.visitors || []);
-        setFilteredVisitors(data.visitors || []);
         setTotalPages(data.pages || 1);
-        setBulkDelete([]); // Reset bulk delete
       } catch (error) {
         console.error("Error fetching visitors:", error);
       } finally {
@@ -80,30 +93,9 @@ export function VisitorTrackingTable() {
     [searchTerm, filter],
   );
 
-  // Initial fetch and when page/filter/search changes
   useEffect(() => {
     fetchVisitors(page);
   }, [page, filter, searchTerm, fetchVisitors]);
-
-  // Real‑time subscription
-  useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase
-      .channel("visitor_table_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "visitor_tracking" },
-        () => {
-          fetchVisitors(page);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [page, fetchVisitors]); // page and fetchVisitors are stable
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,35 +107,36 @@ export function VisitorTrackingTable() {
     fetchVisitors(page);
   };
 
-  const handleDelete = (id: string) => {
-    setVisitors((prev) => prev.filter((v) => v.id !== id));
-    setFilteredVisitors((prev) => prev.filter((v) => v.id !== id));
-  };
-
-  const handleBulkDelete = async () => {
-    if (bulkDelete.length === 0) return;
-    if (!confirm(`Delete ${bulkDelete.length} selected sessions?`)) return;
-
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
     try {
-      await Promise.all(
-        bulkDelete.map((id) =>
-          fetch(`/api/admin/visitors/${id}`, { method: "DELETE" }),
-        ),
-      );
-      fetchVisitors(page); // Refresh
+      const res = await fetch(`/api/admin/visitors/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setVisitors((prev) => prev.filter((v) => v.id !== deleteId));
+        setDeleteId(null);
+      }
     } catch (error) {
-      console.error("Bulk delete failed:", error);
+      console.error("Delete failed:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleExport = () => {
-    const csvContent = filteredVisitors.map((v) => ({
+    const csvContent = visitors.map((v) => ({
       SessionID: v.session_id,
       User: v.users ? v.users.email : "Anonymous",
       Name: v.users ? v.users.name : "Guest",
-      IP: v.ip_address,
-      Device: v.device_info,
+      Country: v.country || "Unknown",
+      City: v.city || "Unknown",
+      Device: v.device_info || "Unknown",
       VisitedAt: new Date(v.visited_at).toLocaleString(),
+      Duration: v.duration
+        ? `${Math.floor(v.duration / 60)}m ${v.duration % 60}s`
+        : "0s",
     }));
 
     const csv = [
@@ -165,7 +158,7 @@ export function VisitorTrackingTable() {
       <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input
-            placeholder="Search by email, IP, or session..."
+            placeholder="Search by email, session, or device..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full sm:w-80"
@@ -213,12 +206,6 @@ export function VisitorTrackingTable() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          {bulkDelete.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete ({bulkDelete.length})
-            </Button>
-          )}
         </div>
       </div>
 
@@ -227,12 +214,12 @@ export function VisitorTrackingTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-180">Session</TableHead>
-              <TableHead className="w-200">User</TableHead>
-              <TableHead className="w-150">IP Address</TableHead>
-              <TableHead className="w-150">Device</TableHead>
-              <TableHead className="w-150">Visit Time</TableHead>
-              <TableHead className="w-80">Actions</TableHead>
+              <TableHead className="w-[180px]">Session</TableHead>
+              <TableHead className="w-[200px]">User</TableHead>
+              <TableHead className="w-[150px]">Location</TableHead>
+              <TableHead className="w-[150px]">Device</TableHead>
+              <TableHead className="w-[150px]">Visit Time</TableHead>
+              <TableHead className="w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -244,18 +231,18 @@ export function VisitorTrackingTable() {
                   </div>
                 </td>
               </TableRow>
-            ) : filteredVisitors.length === 0 ? (
+            ) : visitors.length === 0 ? (
               <TableRow>
                 <td colSpan={6} className="text-center py-8">
                   <div className="text-gray-500">No visitor data found</div>
                 </td>
               </TableRow>
             ) : (
-              filteredVisitors.map((visitor) => (
+              visitors.map((visitor) => (
                 <ExpandableVisitorRow
                   key={visitor.id}
                   visitor={visitor}
-                  onDelete={handleDelete}
+                  onDelete={() => setDeleteId(visitor.id)}
                 />
               ))
             )}
@@ -264,10 +251,10 @@ export function VisitorTrackingTable() {
       </div>
 
       {/* Pagination */}
-      {!loading && filteredVisitors.length > 0 && (
+      {!loading && visitors.length > 0 && (
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-gray-500">
-            Showing {filteredVisitors.length} of {totalPages * 15} visitors
+            Showing {visitors.length} of {totalPages * 15} visitors
           </div>
           <div className="flex gap-2">
             <Button
@@ -296,6 +283,29 @@ export function VisitorTrackingTable() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this
+              visitor session from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

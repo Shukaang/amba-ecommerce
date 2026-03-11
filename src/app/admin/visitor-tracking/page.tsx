@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import { VisitorAnalytics } from "@/components/admin/visitors/visitor-analytics";
 import { VisitorTrackingTable } from "@/components/admin/visitors/visitor-tracking-table";
+import { VisitorAnalyticsDashboard } from "@/components/admin/visitors/visitorAnalytics-dashboard";
 
 export const metadata: Metadata = {
   title: "Visitor Tracking - AmbaStore",
@@ -14,8 +14,8 @@ export default function VisitorsPage() {
         <h1 className="text-2xl font-bold">Visitor Tracking</h1>
         <p className="text-gray-600">Monitor all user sessions and activity</p>
       </div>
-
-      <VisitorAnalytics />
+      <h1 className="text-2xl font-bold mb-6">Visitor Analytics</h1>
+      <VisitorAnalyticsDashboard />
       <VisitorTrackingTable />
     </div>
   );

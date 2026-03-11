@@ -1,61 +1,51 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { getOrCreateSessionId } from "@/lib/tracking/session";
 import { useAuth } from "@/lib/auth/context";
 
-const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
-const TRACK_DELAY = 60000; // 60 seconds
-
 export default function PageTracker() {
-  const pathname = usePathname();
   const { user } = useAuth();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialized = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    // Skip tracking for admins
-    if (user?.role === "SUPERADMIN" || user?.role === "ADMIN") return;
+    // Skip admin users
+    if (user && (user.role === "ADMIN" || user.role === "SUPERADMIN")) {
+      return;
+    }
 
-    if (typeof window === "undefined") return;
+    const sessionId = getOrCreateSessionId();
 
-    const trackVisit = async () => {
-      const lastTrackTime = localStorage.getItem("last_track_time");
-      const now = Date.now();
-      let sessionId = localStorage.getItem("visitor_session_id");
-
-      if (
-        !sessionId ||
-        !lastTrackTime ||
-        now - parseInt(lastTrackTime) > SESSION_TIMEOUT
-      ) {
-        sessionId = crypto.randomUUID();
-        localStorage.setItem("visitor_session_id", sessionId);
-      }
-
-      localStorage.setItem("last_track_time", now.toString());
-
-      try {
-        await fetch("/api/track-visit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            userId: user?.id || null,
-          }),
-        });
-      } catch (error) {
-        // Silent fail
-      }
+    const sendInit = (finalUserId: string | null) => {
+      fetch("/api/track/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, userId: finalUserId }),
+      }).catch(console.error);
     };
 
-    // Clear previous timeout and set new one
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(trackVisit, TRACK_DELAY);
+    // If not yet initialized, start the timer
+    if (!initialized.current) {
+      initialized.current = true;
+      timerRef.current = setTimeout(() => {
+        sendInit(user?.id || null);
+      }, 30000); // 30 seconds
+    }
+
+    // If user becomes available (logged in) before timer fires, cancel and send immediately
+    if (user && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+      sendInit(user.id);
+    }
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
-  }, [pathname, user]);
+  }, [user]);
 
   return null;
 }

@@ -50,6 +50,10 @@ export async function createAdminClient() {
           }
         },
       },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     }
   )
 }
