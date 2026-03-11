@@ -226,9 +226,16 @@ export default function ProductDetailClient({
     `;
 
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
-    const cartIcon = document.querySelector(
-      'a[href="/cart"]',
-    ) as HTMLElement | null;
+    // Find the first visible cart link (non-zero dimensions)
+    const cartLinks = document.querySelectorAll('a[href="/cart"]');
+    let cartIcon: Element | null = null;
+    for (const link of cartLinks) {
+      const rect = link.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        cartIcon = link;
+        break;
+      }
+    }
     const endRect: DOMRect = cartIcon
       ? cartIcon.getBoundingClientRect()
       : new DOMRect(window.innerWidth - 100, 80, 40, 40);

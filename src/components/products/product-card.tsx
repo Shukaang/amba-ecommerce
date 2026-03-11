@@ -71,20 +71,21 @@ export default function PremiumProductCard({
     // Append animation element container (if it exists)
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
 
-    // Find cart icon element (explicitly typed)
-    const cartIcon = document.querySelector(
-      'a[href="/cart"]',
-    ) as Element | null;
-
-    // ALWAYS produce a DOMRect. No unions, no object literal fallbacks.
+    // Find the first visible cart link
+    const cartLinks = document.querySelectorAll('a[href="/cart"]');
+    let cartIcon: Element | null = null;
+    for (const link of cartLinks) {
+      const rect = link.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        cartIcon = link;
+        break;
+      }
+    }
     let endRect: DOMRect;
-
     if (cartIcon) {
       const r = cartIcon.getBoundingClientRect();
-      // Copy into a real DOMRect instance
       endRect = new DOMRect(r.x, r.y, r.width, r.height);
     } else {
-      // Fallback: create a real DOMRect with sensible values
       endRect = new DOMRect(window.innerWidth - 100, 80, 40, 40);
     }
 

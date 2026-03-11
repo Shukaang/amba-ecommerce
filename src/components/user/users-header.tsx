@@ -47,10 +47,11 @@ interface SearchProduct {
   title: string;
   price: number;
   images: string[];
+  slug: string;
 }
 
 interface UserHeaderProps {
-  categories?: Category[]; // optional server-fetched full category tree
+  categories?: Category[];
 }
 
 export default function UserHeader({
@@ -146,7 +147,7 @@ export default function UserHeader({
       try {
         const { data } = await supabase
           .from("products")
-          .select("id, title, price, images")
+          .select("id, title, price, images, slug")
           .ilike("title", `%${debouncedSearch}%`)
           .limit(12);
         setSearchSuggestions(data || []);
@@ -184,8 +185,8 @@ export default function UserHeader({
     }
   };
 
-  const handleSuggestionClick = (productId: string) => {
-    router.push(`/products/${productId}`);
+  const handleSuggestionClick = (productSlug: string) => {
+    router.push(`/products/${productSlug}`);
     setSearchQuery("");
     setShowSuggestions(false);
     setMobileMenuOpen(false);
@@ -416,7 +417,7 @@ export default function UserHeader({
                     searchSuggestions.map((product) => (
                       <div
                         key={product.id}
-                        onClick={() => handleSuggestionClick(product.id)}
+                        onClick={() => handleSuggestionClick(product.slug)}
                         className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
                       >
                         <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
@@ -485,7 +486,7 @@ export default function UserHeader({
                       searchSuggestions.map((product) => (
                         <div
                           key={product.id}
-                          onClick={() => handleSuggestionClick(product.id)}
+                          onClick={() => handleSuggestionClick(product.slug)}
                           className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
                         >
                           <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
