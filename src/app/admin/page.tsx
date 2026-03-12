@@ -14,7 +14,6 @@ export default async function AdminDashboard() {
       productsCount,
       usersCount,
       pendingOrdersCount,
-      superAdminCount,
       recentOrdersResult,
       recentProductsResult,
       recentActivityResult,
@@ -26,11 +25,6 @@ export default async function AdminDashboard() {
         .from("orders")
         .select("*", { count: "exact", head: true })
         .eq("status", "PENDING"),
-      supabase
-        .from("users")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "SUPERADMIN"),
-      // Recent orders – use explicit foreign key for users
       supabase
         .from("orders")
         .select(
@@ -87,7 +81,6 @@ export default async function AdminDashboard() {
           totalProducts={productsCount.count || 0}
           totalUsers={usersCount.count || 0}
           pendingOrders={pendingOrdersCount.count || 0}
-          superAdminCount={superAdminCount.count || 0}
         />
 
         {/* Grid Layout */}
