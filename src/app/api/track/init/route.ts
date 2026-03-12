@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { verifyAuth } from '@/lib/auth/middleware';
 import { UAParser } from 'ua-parser-js';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
