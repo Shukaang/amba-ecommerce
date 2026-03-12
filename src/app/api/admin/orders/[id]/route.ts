@@ -70,32 +70,33 @@ export async function PUT(
 
     // Send email if status becomes CONFIRMED (async)
     if (status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      if (fullOrder.users?.email && fullOrder.order_number) {
-        const items = fullOrder.order_items.map((item: any) => ({
-          title: item.products.title,
-          quantity: item.quantity,
-          price: item.price,
-          variant: item.product_variants
-            ? [item.product_variants.color, item.product_variants.size, item.product_variants.unit]
-                .filter(Boolean)
-                .join(' • ')
-            : undefined,
-        }));
+  if (fullOrder.users?.email && fullOrder.order_number) {
+    const items = fullOrder.order_items.map((item: any) => ({
+      title: item.products.title,
+      quantity: item.quantity,
+      price: item.price,
+      variant: item.product_variants
+        ? [item.product_variants.color, item.product_variants.size, item.product_variants.unit]
+            .filter(Boolean)
+            .join(' • ')
+        : undefined,
+      image: item.products.images?.[0]   // <-- this line was missing
+    }));
 
-        const deliveryInfo =
-          'Delivery within 2 weeks. Free in Addis Ababa, EMS shipping fee applies to other cities.';
+    const deliveryInfo =
+      'Delivery within 2 weeks. Free in Addis Ababa, EMS shipping fee applies to other cities.';
 
-        sendOrderConfirmedEmail({
-          to: fullOrder.users.email,
-          customerName: fullOrder.users.name,
-          orderNumber: fullOrder.order_number,
-          items,
-          total: fullOrder.total_price,
-          shippingAddress: fullOrder.shipping_info,
-          deliveryInfo,
-        }).catch(err => console.error('Order confirmed email failed:', err));
-      }
-    }
+    sendOrderConfirmedEmail({
+      to: fullOrder.users.email,
+      customerName: fullOrder.users.name,
+      orderNumber: fullOrder.order_number,
+      items,
+      total: fullOrder.total_price,
+      shippingAddress: fullOrder.shipping_info,
+      deliveryInfo,
+    }).catch(err => console.error('Order confirmed email failed:', err));
+  }
+}
 
     return NextResponse.json({
       success: true,
