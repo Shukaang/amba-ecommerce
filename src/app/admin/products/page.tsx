@@ -43,7 +43,7 @@ export default async function AdminProductsPage() {
           <p className="text-gray-600">Manage your product catalog</p>
         </div>
         <Link href="/admin/products/new">
-          <Button>
+          <Button variant="default">
             <Plus className="h-4 w-4 mr-2" />
             Add Product
           </Button>

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
@@ -678,139 +679,156 @@ export default function UserHeader({
           </div>
         </div>
 
-        {/* Mobile Menu (Hamburger Drawer) - slides from right */}
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/50 z-[9998] transition-opacity"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            {/* Drawer */}
-            <div
-              className={`fixed top-20 right-0 h-[calc(100vh-5rem)] w-4/5 max-w-sm bg-white shadow-xl z-[9999] transform transition-transform duration-300 ease-in-out ${
-                mobileMenuOpen ? "translate-x-0" : "translate-x-full"
-              } overflow-y-auto`}
-            >
-              <div className="p-6">
-                {/* All Categories Section */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-[#00014a] mb-3">
-                    Categories
-                  </h3>
-                  <div className="space-y-2">
-                    {loadingCategories ? (
-                      <div className="space-y-2">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="h-6 w-32 bg-gray-200 rounded animate-pulse"
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      (categories || []).map((cat) => (
-                        <Link
-                          key={cat.id}
-                          href={`/products?category=${cat.id}`}
-                          className="block py-2 text-gray-700 hover:text-[#f73a00] font-medium"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          {cat.title}
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </div>
+        {/* Mobile Menu Drawer - Always in DOM, toggled via classes */}
+        <div
+          className={cn(
+            "fixed inset-0 z-[9999] lg:hidden",
+            mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none",
+          )}
+        >
+          {/* Overlay with fade */}
+          <div
+            className={cn(
+              "absolute inset-0 bg-black/50 transition-opacity duration-500",
+              mobileMenuOpen ? "opacity-100" : "opacity-0",
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+          />
 
-                {/* Auth / User Section */}
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="text-lg font-semibold text-[#00014a] mb-3">
-                    {user ? "Account" : "Account Access"}
-                  </h3>
+          {/* Drawer panel - slides from right */}
+          <div
+            className={cn(
+              "absolute top-0 right-0 h-screen w-4/5 max-w-sm bg-white shadow-2xl transform transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-y-auto",
+              mobileMenuOpen ? "translate-x-0" : "translate-x-full",
+            )}
+          >
+            {/* Sticky header with X button on top-left */}
+            <div className="sticky top-0 flex justify-start p-4 bg-white border-b border-gray-200 z-10">
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
 
-                  {user ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-[#f73a00] text-white">
-                            {getUserInitials()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {user.name}
-                          </p>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                        </div>
-                      </div>
-
-                      <Link
-                        href="/profile"
-                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <User className="h-5 w-5" />
-                        <span>Profile</span>
-                      </Link>
-
-                      <Link
-                        href="/orders"
-                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Package className="h-5 w-5" />
-                        <span>My Orders</span>
-                      </Link>
-
-                      {["ADMIN", "SUPERADMIN"].includes(user.role) && (
-                        <Link
-                          href="/admin"
-                          className="flex items-center gap-3 py-2 text-[#f73a00] font-medium"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Home className="h-5 w-5" />
-                          <span>Admin Dashboard</span>
-                        </Link>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setMobileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-3 py-2 text-red-600 hover:text-red-700 w-full"
-                      >
-                        <LogOut className="h-5 w-5" />
-                        <span>Log out</span>
-                      </button>
+            <div className="p-6 pt-2">
+              {/* All Categories Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-[#00014a] mb-3">
+                  Categories
+                </h3>
+                <div className="space-y-2">
+                  {loadingCategories ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className="h-6 w-32 bg-gray-200 rounded animate-pulse"
+                        />
+                      ))}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    (categories || []).map((cat) => (
                       <Link
-                        href="/login"
-                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                        key={cat.id}
+                        href={`/products?category=${cat.id}`}
+                        className="block py-2 text-gray-700 hover:text-[#f73a00] font-medium"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <LogIn className="h-5 w-5" />
-                        <span>Sign In</span>
+                        {cat.title}
                       </Link>
-
-                      <Link
-                        href="/register"
-                        className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <UserPlus className="h-5 w-5" />
-                        <span>Sign Up</span>
-                      </Link>
-                    </div>
+                    ))
                   )}
                 </div>
               </div>
+
+              {/* Auth / User Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-lg font-semibold text-[#00014a] mb-3">
+                  {user ? "Account" : "Account Access"}
+                </h3>
+
+                {user ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-[#f73a00] text-white">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-gray-900">{user.name}</p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User className="h-5 w-5" />
+                      <span>Profile</span>
+                    </Link>
+
+                    <Link
+                      href="/orders"
+                      className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Package className="h-5 w-5" />
+                      <span>My Orders</span>
+                    </Link>
+
+                    {["ADMIN", "SUPERADMIN"].includes(user.role) && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-3 py-2 text-[#f73a00] font-medium"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Home className="h-5 w-5" />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 py-2 text-red-600 hover:text-red-700 w-full"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span>Log out</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <LogIn className="h-5 w-5" />
+                      <span>Sign In</span>
+                    </Link>
+
+                    <Link
+                      href="/register"
+                      className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <UserPlus className="h-5 w-5" />
+                      <span>Sign Up</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </header>
     </>
   );

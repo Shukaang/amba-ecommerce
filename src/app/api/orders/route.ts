@@ -79,13 +79,13 @@ export async function POST(request: NextRequest) {
       throw orderError
     }
 
-    // Create order items from cart items
+    // Create order items from cart items – use the price already stored in cart (which is the variant price if applicable)
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
       variant_id: item.variant_id,
       quantity: item.quantity,
-      price: item.products.price,
+      price: item.price, // ✅ Use the price from cart_items (correct variant or product price)
     }))
 
     const { error: orderItemsError } = await supabase
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET user's orders
+// GET user's orders – unchanged
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyAuth(request)

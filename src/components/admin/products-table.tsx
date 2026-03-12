@@ -56,6 +56,10 @@ interface Product {
     id: string;
     title: string;
   } | null;
+  // New fields
+  colors: string[];
+  sizes: Array<{ name: string; price: number }>;
+  // Keep product_variants for backward compatibility (optional)
   product_variants?: Array<{
     id: string;
     color?: string;
@@ -383,7 +387,7 @@ export default function ProductsTable({
   return (
     <>
       <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-        {/* Header with filters */}
+        {/* Header with filters (unchanged) */}
         <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex-1 max-w-lg">
@@ -478,7 +482,7 @@ export default function ProductsTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedProducts.map((product) => (
                 <Fragment key={product.id}>
-                  {/* Main row */}
+                  {/* Main row (unchanged) */}
                   <tr
                     onClick={() => toggleExpand(product.id)}
                     className="hover:bg-gray-50 cursor-pointer"
@@ -601,7 +605,7 @@ export default function ProductsTable({
                     </td>
                   </tr>
 
-                  {/* Expanded details */}
+                  {/* Expanded details – UPDATED to show colors and sizes */}
                   {expandedProductId === product.id && (
                     <tr>
                       <td
@@ -625,39 +629,51 @@ export default function ProductsTable({
                             </div>
                           )}
 
-                          {product.product_variants &&
-                            product.product_variants.length > 0 && (
-                              <div>
-                                <h4 className="font-medium text-gray-700 mb-1">
-                                  Variants
-                                </h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                  {product.product_variants.map((variant) => (
-                                    <div
-                                      key={variant.id}
-                                      className="bg-white p-2 rounded border border-gray-200 text-xs"
-                                    >
-                                      <div className="font-medium text-gray-900">
-                                        {[
-                                          variant.color &&
-                                            `Color: ${variant.color}`,
-                                          variant.size &&
-                                            `Size: ${variant.size}`,
-                                          variant.unit &&
-                                            `Unit: ${variant.unit}`,
-                                        ]
-                                          .filter(Boolean)
-                                          .join(" • ")}
-                                      </div>
-                                      <div className="text-gray-600 mt-1">
-                                        Br {variant.price.toLocaleString()}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                          {/* Colors */}
+                          {product.colors && product.colors.length > 0 && (
+                            <div>
+                              <h4 className="font-medium text-gray-700 mb-1">
+                                Colors
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {product.colors.map((color) => (
+                                  <Badge
+                                    key={color}
+                                    variant="outline"
+                                    className="bg-white p-2 rounded border border-gray-200 text-xs font-medium text-gray-900"
+                                  >
+                                    {color}
+                                  </Badge>
+                                ))}
                               </div>
-                            )}
+                            </div>
+                          )}
 
+                          {/* Sizes */}
+                          {product.sizes && product.sizes.length > 0 && (
+                            <div>
+                              <h4 className="font-medium text-gray-700 mb-1">
+                                Sizes & Prices
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                {product.sizes.map((size) => (
+                                  <div
+                                    key={size.name}
+                                    className="bg-white p-2 rounded border border-gray-200 text-xs"
+                                  >
+                                    <div className="font-medium text-gray-900">
+                                      {size.name}
+                                    </div>
+                                    <div className="text-gray-600 mt-1">
+                                      Br {size.price.toLocaleString()}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Created / Updated info (unchanged) */}
                           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
                             <div>
                               <h4 className="font-medium text-gray-700 mb-1">
@@ -715,7 +731,7 @@ export default function ProductsTable({
           )}
         </div>
 
-        {/* Pagination */}
+        {/* Pagination (unchanged) */}
         <div className="px-4 py-2 border-t border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="text-xs text-gray-700">
@@ -768,7 +784,7 @@ export default function ProductsTable({
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog (unchanged) */}
       <AlertDialog
         open={!!productToDelete}
         onOpenChange={() => setProductToDelete(null)}

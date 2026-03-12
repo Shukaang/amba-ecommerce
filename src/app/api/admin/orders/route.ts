@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { verifyAuth } from '@/lib/auth/middleware';
 
+// api/admin/orders/route.ts
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyAuth(request);

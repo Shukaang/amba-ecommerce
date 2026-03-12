@@ -4,7 +4,7 @@ import { withAdminAuth } from '@/lib/auth/middleware';
 import { uploadProductImage, deleteProductImage, deleteProductFolder } from '@/lib/supabase/storage';
 import { verifyAuth } from '@/lib/auth/middleware';
 
-// GET – public: only approved; admin: any
+// GET – unchanged
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -51,10 +51,7 @@ async function updateProduct(
   try {
     const user = await verifyAuth(request);
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -67,7 +64,8 @@ async function updateProduct(
     const price = parseFloat(formData.get('price') as string);
     const existingImagesJson = formData.get('existingImages') as string;
     const imagesToDeleteJson = formData.get('imagesToDelete') as string;
-    const variantsJson = formData.get('variants') as string | null;
+    const colorsJson = formData.get('colors') as string | null;
+    const sizesJson = formData.get('sizes') as string | null;
     const newImageFiles = formData.getAll('newImages') as File[];
 
     if (!title || !description || isNaN(price)) {
@@ -82,12 +80,10 @@ async function updateProduct(
 
     const supabase = await createAdminClient();
 
-    // Delete images marked for deletion
     for (const url of imagesToDelete) {
       await deleteProductImage(url);
     }
 
-    // Upload new images
     const newImageUrls: string[] = [];
     for (const file of newImageFiles) {
       try {
@@ -98,10 +94,8 @@ async function updateProduct(
       }
     }
 
-    // Final images array = kept existing + new
     const finalImages = [...existingImages, ...newImageUrls];
 
-    // Update product with updated_by set to current user
     const { error: productError } = await supabase
       .from('products')
       .update({
@@ -113,32 +107,42 @@ async function updateProduct(
         updated_at: new Date().toISOString(),
         updated_by: user.id,
         link,
+        colors: colorsJson ? JSON.parse(colorsJson) : [],
+        sizes: sizesJson ? JSON.parse(sizesJson) : [],
       })
       .eq('id', id);
 
     if (productError) throw productError;
 
-    // Update variants: delete all and reinsert
+    // Delete old variants
     await supabase.from('product_variants').delete().eq('product_id', id);
 
-    if (variantsJson) {
-      const variants = JSON.parse(variantsJson);
-      if (variants.length > 0) {
-        const variantData = variants.map((v: any) => ({
-          product_id: id,
-          color: v.color,
-          size: v.size,
-          unit: v.unit,
-          price: v.price,
-        }));
-        const { error: variantsError } = await supabase
-          .from('product_variants')
-          .insert(variantData);
-        if (variantsError) throw variantsError;
+    // Generate new variants
+    const colors = JSON.parse(colorsJson || '[]');
+    const sizes = JSON.parse(sizesJson || '[]');
+    const variants = [];
+
+    for (const color of colors) {
+      for (const size of sizes) {
+        if (color.trim() && size.name.trim()) {
+          variants.push({
+            product_id: id,
+            color: color.trim(),
+            size: size.name.trim(),
+            unit: null,
+            price: size.price,
+          });
+        }
       }
     }
 
-    // Fetch updated product with creator and updater info
+    if (variants.length > 0) {
+      const { error: variantsError } = await supabase
+        .from('product_variants')
+        .insert(variants);
+      if (variantsError) throw variantsError;
+    }
+
     const { data: completeProduct, error: fetchError } = await supabase
       .from('products')
       .select(`
@@ -181,10 +185,7 @@ async function deleteProduct(
       .single();
 
     if (!existingProduct) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     await deleteProductFolder(id);

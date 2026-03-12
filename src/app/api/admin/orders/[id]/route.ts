@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { verifyAuth } from '@/lib/auth/middleware';
 import { sendOrderConfirmedEmail } from '@/lib/email';
 
+// api/admin/orders/[id]/route.ts
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

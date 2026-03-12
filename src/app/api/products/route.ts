@@ -5,7 +5,7 @@ import { generateUniqueSlug } from '@/lib/utils/slug';
 import { uploadProductImage } from '@/lib/supabase/storage';
 import { verifyAuth } from '@/lib/auth/middleware';
 
-// Public GET – list products (only approved) with optional filtering
+// Public GET – unchanged
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -78,13 +78,9 @@ export async function GET(request: NextRequest) {
 
 async function createProduct(request: NextRequest) {
   try {
-    // Get current user
     const user = await verifyAuth(request);
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -93,7 +89,8 @@ async function createProduct(request: NextRequest) {
     const link = formData.get('link') as string | null;
     const category_id = formData.get('category_id') as string;
     const price = parseFloat(formData.get('price') as string);
-    const variantsJson = formData.get('variants') as string | null;
+    const colorsJson = formData.get('colors') as string | null;
+    const sizesJson = formData.get('sizes') as string | null;
     const imageFiles = formData.getAll('images') as File[];
 
     if (!title || !description || isNaN(price)) {
@@ -105,10 +102,8 @@ async function createProduct(request: NextRequest) {
 
     const supabase = await createAdminClient();
 
-    // Generate unique slug
     const slug = await generateUniqueSlug(title, supabase);
 
-    // Insert product with created_by and updated_by
     const { data: product, error: productError } = await supabase
       .from('products')
       .insert({
@@ -122,6 +117,8 @@ async function createProduct(request: NextRequest) {
         created_by: user.id,
         updated_by: user.id,
         link,
+        colors: colorsJson ? JSON.parse(colorsJson) : [],
+        sizes: sizesJson ? JSON.parse(sizesJson) : [],
       })
       .select()
       .single();
@@ -139,7 +136,6 @@ async function createProduct(request: NextRequest) {
       }
     }
 
-    // Update product with image URLs
     const { error: updateError } = await supabase
       .from('products')
       .update({ images: imageUrls })
@@ -147,25 +143,32 @@ async function createProduct(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    // Handle variants
-    if (variantsJson) {
-      const variants = JSON.parse(variantsJson);
-      if (variants.length > 0) {
-        const variantData = variants.map((v: any) => ({
-          product_id: product.id,
-          color: v.color,
-          size: v.size,
-          unit: v.unit,
-          price: v.price,
-        }));
-        const { error: variantsError } = await supabase
-          .from('product_variants')
-          .insert(variantData);
-        if (variantsError) throw variantsError;
+    // Generate variants from colors and sizes
+    const colors = JSON.parse(colorsJson || '[]');
+    const sizes = JSON.parse(sizesJson || '[]');
+    const variants = [];
+
+    for (const color of colors) {
+      for (const size of sizes) {
+        if (color.trim() && size.name.trim()) {
+          variants.push({
+            product_id: product.id,
+            color: color.trim(),
+            size: size.name.trim(),
+            unit: null,
+            price: size.price,
+          });
+        }
       }
     }
 
-    // Fetch complete product with creator and updater info
+    if (variants.length > 0) {
+      const { error: variantsError } = await supabase
+        .from('product_variants')
+        .insert(variants);
+      if (variantsError) throw variantsError;
+    }
+
     const { data: completeProduct, error: fetchError } = await supabase
       .from('products')
       .select(

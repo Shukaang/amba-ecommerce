@@ -85,6 +85,9 @@ interface Product {
   average_rating: number;
   images: string[];
   categories: Category | null;
+  // New fields
+  colors: string[];
+  sizes: Array<{ name: string; price: number }>;
   product_variants: ProductVariant[];
 }
 
@@ -110,10 +113,27 @@ export default function ProductDetailClient({
   const pathname = usePathname();
   const trackProduct = useTrackProduct();
 
-  // Product state
+  // Product state – new: selectedColor, smarter selectedVariant initialization
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    product.colors?.[0] || null,
+  );
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    () =>
-      product.product_variants.length > 0 ? product.product_variants[0] : null,
+    () => {
+      if (product.product_variants.length > 0) {
+        // Try to match first color and first size
+        const firstColor = product.colors?.[0];
+        const firstSize = product.sizes?.[0]?.name;
+        if (firstColor && firstSize) {
+          const variant = product.product_variants.find(
+            (v) => v.color === firstColor && v.size === firstSize,
+          );
+          if (variant) return variant;
+        }
+        // Fallback to first variant
+        return product.product_variants[0];
+      }
+      return null;
+    },
   );
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -122,7 +142,7 @@ export default function ProductDetailClient({
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
 
-  // Ratings state
+  // Ratings state (unchanged)
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [loadingRatings, setLoadingRatings] = useState(true);
@@ -139,7 +159,7 @@ export default function ProductDetailClient({
     "recent",
   );
 
-  // Recommended products
+  // Recommended products (unchanged)
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
 
@@ -265,6 +285,11 @@ export default function ProductDetailClient({
   const handleAddToCart = async () => {
     if (!user) {
       toast.error("Please login to add items to cart");
+      return;
+    }
+
+    if (!selectedVariant) {
+      toast.error("Please select a variant");
       return;
     }
 
@@ -439,7 +464,7 @@ export default function ProductDetailClient({
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Breadcrumb */}
+        {/* Breadcrumb (unchanged) */}
         <nav className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8 overflow-x-auto pb-2">
           <Link
             href="/"
@@ -473,7 +498,7 @@ export default function ProductDetailClient({
 
         {/* Main product section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
-          {/* Left: Image gallery */}
+          {/* Left: Image gallery (unchanged) */}
           <div className="flex flex-col lg:flex-row lg:gap-4">
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px] order-2 lg:order-1">
               {product.images.map((img, idx) => (
@@ -527,7 +552,7 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* Right: Product info */}
+          {/* Right: Product info – variant selection updated */}
           <div className="space-y-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -594,43 +619,63 @@ export default function ProductDetailClient({
               </div>
             </div>
 
-            {product.product_variants.length > 0 && (
+            {/* Colors */}
+            {product.colors && product.colors.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-2">
-                  Available Variants
+                  Color
                 </h3>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {product.product_variants.map((variant) => {
-                    const isSelected = selectedVariant?.id === variant.id;
-                    const variantName = [
-                      variant.color,
-                      variant.size,
-                      variant.unit,
-                    ]
-                      .filter(Boolean)
-                      .join(" • ");
+                <div className="flex flex-wrap gap-2">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        // Try to select the first size for this color
+                        const firstSize = product.sizes?.[0]?.name;
+                        if (firstSize) {
+                          const variant = product.product_variants.find(
+                            (v) => v.color === color && v.size === firstSize,
+                          );
+                          if (variant) setSelectedVariant(variant);
+                        }
+                      }}
+                      className={`px-4 py-2 border rounded-md transition-all ${
+                        selectedColor === color
+                          ? "border-[#f73a00] bg-orange-50 text-[#f73a00]"
+                          : "border-gray-200 hover:border-orange-200 text-gray-800"
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sizes */}
+            {selectedColor && product.sizes && product.sizes.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Size</h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => {
+                    const variant = product.product_variants.find(
+                      (v) => v.color === selectedColor && v.size === size.name,
+                    );
+                    if (!variant) return null;
                     return (
                       <button
-                        key={variant.id}
+                        key={size.name}
                         onClick={() => setSelectedVariant(variant)}
-                        className={`p-1 border-2 rounded-lg text-left transition-all ${
-                          isSelected
-                            ? "border-[#f73a00] bg-orange-50"
-                            : "border-gray-200 hover:border-orange-200"
+                        className={`px-3 py-1 border rounded-md transition-all ${
+                          selectedVariant?.id === variant.id
+                            ? "border-[#f73a00] bg-orange-50 text-[#f73a00]"
+                            : "border-gray-200 hover:border-orange-200 text-gray-800"
                         }`}
                       >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-medium text-sm text-gray-900">
-                              {variantName || "Standard"}
-                            </div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              Br{variant.price.toLocaleString("en-US")}
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <Check className="h-4 w-4 text-[#f73a00] ml-auto mt-1" />
-                          )}
+                        <div className="font-medium">{size.name}</div>
+                        <div className="text-sm">
+                          Br {size.price.toLocaleString("en-US")}
                         </div>
                       </button>
                     );
@@ -639,6 +684,7 @@ export default function ProductDetailClient({
               </div>
             )}
 
+            {/* Quantity (unchanged) */}
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-2">
                 Quantity
@@ -668,6 +714,7 @@ export default function ProductDetailClient({
               </div>
             </div>
 
+            {/* Add to cart button (unchanged) */}
             <div className="sticky bottom-4 z-10 lg:static lg:bottom-auto">
               <Button
                 id="add-to-cart-btn"
@@ -683,6 +730,7 @@ export default function ProductDetailClient({
               </Button>
             </div>
 
+            {/* Shipping info (unchanged) */}
             <div className="grid grid-cols-2 gap-2 pt-2">
               <div className="text-center p-2 bg-gray-50 rounded-lg">
                 <Truck className="h-5 w-5 mx-auto mb-1 text-[#f73a00]" />
@@ -696,19 +744,19 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* Tabs – unchanged */}
+        {/* Tabs (unchanged) */}
         <div className="mt-8">
           <Tabs defaultValue="description" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 p-1 rounded-lg">
               <TabsTrigger
                 value="description"
-                className="text-sm data-[state=active]:bg-white data-[state=active]:text-[#f73a00] rounded-md"
+                className="text-sm text-gray-800 data-[state=active]:bg-white data-[state=active]:text-[#f73a00] dark:data-[state=active]:text-[#f73a00] rounded-md"
               >
                 <Info className="h-4 w-4 mr-2" /> Description
               </TabsTrigger>
               <TabsTrigger
                 value="reviews"
-                className="text-sm data-[state=active]:bg-white data-[state=active]:text-[#f73a00] rounded-md"
+                className="text-sm text-gray-800 data-[state=active]:bg-white data-[state=active]:text-[#f73a00] dark:data-[state=active]:text-[#f73a00] rounded-md"
               >
                 <MessageCircle className="h-4 w-4 mr-2" /> Reviews
               </TabsTrigger>
@@ -734,7 +782,7 @@ export default function ProductDetailClient({
               </div>
             </TabsContent>
             <TabsContent value="reviews" className="space-y-4">
-              {/* Rating summary, write review, etc. – unchanged */}
+              {/* ... entire reviews section unchanged ... */}
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center gap-4">
                   <span className="text-3xl font-bold text-gray-900">
@@ -751,20 +799,19 @@ export default function ProductDetailClient({
                   <Button
                     size="sm"
                     onClick={() => setRatingFilter("recent")}
-                    className={`text-xs ${ratingFilter === "recent" ? "bg-[#f73a00] text-white" : "bg-gray-200 text-gray-700"}`}
+                    className={`text-xs ${ratingFilter === "recent" ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-700"}`}
                   >
                     Recent
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => setRatingFilter("highest")}
-                    className={`text-xs ${ratingFilter === "highest" ? "bg-[#f73a00] text-white" : "bg-gray-200 text-gray-700"}`}
+                    className={`text-xs ${ratingFilter === "highest" ? "bg-[#f73a00] hover:bg-[#f73a00]/90 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-700"}`}
                   >
                     Highest Rated
                   </Button>
                 </div>
               </div>
-              {/* Write review / sign-in prompt */}
               {!user ? (
                 <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
                   <p className="text-gray-600 text-sm mb-2">
@@ -781,7 +828,7 @@ export default function ProductDetailClient({
               ) : !userRating ? (
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button className="w-full text-white bg-[#f73a00] text-sm">
+                    <Button className="w-full text-white bg-[#f73a00] hover:bg-[#f73a00]/90 text-sm">
                       Write a Review
                     </Button>
                   </DialogTrigger>
@@ -830,7 +877,6 @@ export default function ProductDetailClient({
                   </DialogContent>
                 </Dialog>
               ) : null}
-              {/* User's own review */}
               {userRating && (
                 <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
                   <div className="flex justify-between items-start mb-2">
@@ -915,7 +961,6 @@ export default function ProductDetailClient({
                   )}
                 </div>
               )}
-              {/* All reviews */}
               {loadingRatings ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-[#f73a00]" />
@@ -968,7 +1013,7 @@ export default function ProductDetailClient({
           </Tabs>
         </div>
 
-        {/* You May Also Like Section – unchanged */}
+        {/* You May Also Like (unchanged) */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             You May Also Like
@@ -1020,7 +1065,7 @@ export default function ProductDetailClient({
           )}
         </div>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog (unchanged) */}
         <AlertDialog
           open={!!deletingRating}
           onOpenChange={() => setDeletingRating(null)}

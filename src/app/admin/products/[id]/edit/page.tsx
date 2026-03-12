@@ -30,21 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Plus,
-  Trash2,
-  Loader2,
-  Package,
-  ChevronDown,
-  ChevronUp,
-  Tag,
-  Ruler,
-  Palette,
-  Upload,
-  X,
-} from "lucide-react";
+import { Plus, Trash2, Loader2, Package, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
 
 interface Category {
   id: string;
@@ -52,22 +39,16 @@ interface Category {
   parent_id: string | null;
 }
 
-interface ProductVariant {
-  id?: string;
-  color: string;
-  size: string;
-  unit: string;
-  price: string;
-}
-
 interface Product {
   id: string;
   title: string;
   description: string;
+  link: string | null;
   category_id: string | null;
   price: number;
   images: string[];
-  product_variants?: ProductVariant[];
+  colors: string[];
+  sizes: Array<{ name: string; price: number }>;
 }
 
 export default function EditProductPage() {
@@ -82,8 +63,6 @@ export default function EditProductPage() {
     { id: string; title: string; depth: number }[]
   >([]);
   const [product, setProduct] = useState<Product | null>(null);
-  const [hasVariants, setHasVariants] = useState(false);
-  const [showVariants, setShowVariants] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -91,15 +70,16 @@ export default function EditProductPage() {
     category_id: "",
     price: "",
   });
-  const [variants, setVariants] = useState<ProductVariant[]>([
-    { color: "", size: "", unit: "", price: "" },
-  ]);
 
-  // Delete modal state
+  // Colors and sizes
+  const [colors, setColors] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<{ name: string; price: number }[]>([]);
+
+  // Delete modal
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Image states
+  // Images
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const [mainExisting, setMainExisting] = useState<string | null>(null);
@@ -120,7 +100,6 @@ export default function EditProductPage() {
     fetchData();
   }, [productId]);
 
-  // Clean up preview URLs
   useEffect(() => {
     return () => {
       if (mainPreview) URL.revokeObjectURL(mainPreview);
@@ -157,28 +136,15 @@ export default function EditProductPage() {
           price: prod.price.toString(),
         });
 
-        // Split images into main, secondary, additional
+        // Colors and sizes
+        setColors(prod.colors || []);
+        setSizes(prod.sizes || []);
+
+        // Images
         const images = prod.images || [];
         if (images.length > 0) setMainExisting(images[0]);
         if (images.length > 1) setSecondaryExisting(images[1]);
         if (images.length > 2) setAdditionalExisting(images.slice(2));
-
-        if (prod.product_variants && prod.product_variants.length > 0) {
-          setHasVariants(true);
-          setShowVariants(true);
-          setVariants(
-            prod.product_variants.map((v: any) => ({
-              id: v.id,
-              color: v.color || "",
-              size: v.size || "",
-              unit: v.unit || "",
-              price: v.price.toString(),
-            })),
-          );
-        } else {
-          setHasVariants(false);
-          setVariants([{ color: "", size: "", unit: "", price: "" }]);
-        }
       } else {
         toast.error("Product not found");
         router.push("/admin/products");
@@ -288,53 +254,29 @@ export default function EditProductPage() {
     }
   };
 
-  // Variant handlers
-  const handleVariantChange = (
-    index: number,
-    field: keyof ProductVariant,
-    value: string,
-  ) => {
-    const newVariants = [...variants];
-    newVariants[index] = { ...newVariants[index], [field]: value };
-    setVariants(newVariants);
+  // Colors handlers
+  const addColor = () => setColors([...colors, ""]);
+  const removeColor = (index: number) =>
+    setColors(colors.filter((_, i) => i !== index));
+  const updateColor = (index: number, value: string) => {
+    const newColors = [...colors];
+    newColors[index] = value;
+    setColors(newColors);
   };
 
-  const addVariant = () => {
-    setVariants([...variants, { color: "", size: "", unit: "", price: "" }]);
+  // Sizes handlers
+  const addSize = () => setSizes([...sizes, { name: "", price: 0 }]);
+  const removeSize = (index: number) =>
+    setSizes(sizes.filter((_, i) => i !== index));
+  const updateSizeName = (index: number, value: string) => {
+    const newSizes = [...sizes];
+    newSizes[index].name = value;
+    setSizes(newSizes);
   };
-
-  const removeVariant = (index: number) => {
-    if (variants.length > 1) {
-      const newVariants = variants.filter((_, i) => i !== index);
-      setVariants(newVariants);
-    }
-  };
-
-  const validateVariants = (): boolean => {
-    if (!hasVariants) return true;
-    for (const variant of variants) {
-      if (!variant.price.trim()) {
-        toast.error("All variants must have a price");
-        return false;
-      }
-      if (
-        !variant.color.trim() &&
-        !variant.size.trim() &&
-        !variant.unit.trim()
-      ) {
-        toast.error(
-          "Each variant must have at least one attribute (color, size, or unit)",
-        );
-        return false;
-      }
-    }
-    const variantKeys = variants.map((v) => `${v.color}|${v.size}|${v.unit}`);
-    const uniqueKeys = new Set(variantKeys);
-    if (uniqueKeys.size !== variants.length) {
-      toast.error("Duplicate variants detected");
-      return false;
-    }
-    return true;
+  const updateSizePrice = (index: number, value: number) => {
+    const newSizes = [...sizes];
+    newSizes[index].price = value;
+    setSizes(newSizes);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -342,7 +284,19 @@ export default function EditProductPage() {
     setSaving(true);
 
     try {
-      if (hasVariants && !validateVariants()) {
+      // Validate
+      if (colors.length === 0 || sizes.length === 0) {
+        toast.error("Please add at least one color and one size");
+        setSaving(false);
+        return;
+      }
+      if (colors.some((c) => !c.trim())) {
+        toast.error("All colors must have a value");
+        setSaving(false);
+        return;
+      }
+      if (sizes.some((s) => !s.name.trim() || s.price <= 0)) {
+        toast.error("All sizes must have a name and positive price");
         setSaving(false);
         return;
       }
@@ -351,21 +305,12 @@ export default function EditProductPage() {
 
       formDataToSend.append("title", formData.title);
       formDataToSend.append("description", formData.description);
+      formDataToSend.append("link", formData.link || "null");
       formDataToSend.append("category_id", formData.category_id || "null");
       formDataToSend.append("price", formData.price);
       formDataToSend.append("imagesToDelete", JSON.stringify(imagesToDelete));
-
-      if (hasVariants) {
-        const variantsData = variants
-          .filter((v) => v.color.trim() || v.size.trim() || v.unit.trim())
-          .map((v) => ({
-            color: v.color.trim() || null,
-            size: v.size.trim() || null,
-            unit: v.unit.trim() || null,
-            price: parseFloat(v.price),
-          }));
-        formDataToSend.append("variants", JSON.stringify(variantsData));
-      }
+      formDataToSend.append("colors", JSON.stringify(colors));
+      formDataToSend.append("sizes", JSON.stringify(sizes));
 
       const keptImages: string[] = [];
       if (mainExisting) keptImages.push(mainExisting);
@@ -448,57 +393,81 @@ export default function EditProductPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <Card>
+          <Card className="bg-white">
             <CardHeader>
-              <CardTitle>Product Information</CardTitle>
+              <CardTitle className="text-gray-900">
+                Product Information
+              </CardTitle>
               <CardDescription>Update the product details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Title, Description, Category, Price (unchanged) */}
+              {/* Title */}
               <div className="space-y-2">
-                <Label htmlFor="title">Product Title *</Label>
+                <Label htmlFor="title" className="text-gray-900">
+                  Product Title *
+                </Label>
                 <Input
                   id="title"
                   name="title"
+                  className="text-gray-900"
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="Enter product name"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description" className="text-gray-900">
+                  Description *
+                </Label>
                 <Textarea
                   id="description"
                   name="description"
+                  className="text-gray-900"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Enter product description"
                   rows={4}
                   required
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="link" className="text-gray-900">
+                  External Link (optional)
+                </Label>
+                <Input
+                  id="link"
+                  name="link"
+                  type="url"
+                  className="text-gray-900"
+                  value={formData.link}
+                  onChange={handleChange}
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="category_id">Category</Label>
+                  <Label htmlFor="category_id" className="text-gray-900">
+                    Category
+                  </Label>
                   <Select
                     value={formData.category_id}
                     onValueChange={(value) =>
                       setFormData((prev) => ({ ...prev, category_id: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-gray-900">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-80">
+                    <SelectContent className="max-h-80 text-gray-900 bg-white">
                       <SelectItem value="null">Uncategorized</SelectItem>
                       {categoryOptions.map((option) => (
                         <SelectItem
                           key={option.id}
                           value={option.id}
-                          className={option.depth > 0 ? "pl-6" : ""}
+                          className={
+                            option.depth > 0 ? "pl-6" : "font-semibold"
+                          }
                         >
                           {option.title}
                         </SelectItem>
@@ -508,211 +477,108 @@ export default function EditProductPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price">
-                    {hasVariants ? "Base Price (Br) *" : "Price (Br) *"}
+                  <Label htmlFor="price" className="text-gray-900">
+                    Base Price (Br) *
                   </Label>
                   <Input
                     id="price"
                     name="price"
                     type="number"
+                    className="text-gray-900"
                     step="0.01"
                     min="0"
                     value={formData.price}
                     onChange={handleChange}
-                    placeholder="0.00"
                     required
                   />
-                  {hasVariants && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      This is the base price. Variants can have different
-                      prices.
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500">
+                    This is the base price; individual sizes have their own
+                    prices.
+                  </p>
                 </div>
               </div>
 
-              {/* Variants Toggle & Section */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Package className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <Label htmlFor="variants" className="text-base font-medium">
-                      Product Variants
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Enable if this product comes in different colors, sizes,
-                      or units
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={hasVariants}
-                  onCheckedChange={(checked) => {
-                    setHasVariants(checked);
-                    if (checked) setShowVariants(true);
-                  }}
-                />
-              </div>
-
-              {hasVariants && (
-                <div className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <button
+              {/* Colors Section */}
+              <div className="space-y-4 border rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900">Colors</h3>
+                <div className="space-y-2">
+                  {colors.map((color, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        value={color}
+                        onChange={(e) => updateColor(index, e.target.value)}
+                        placeholder="e.g., Red"
+                        className="flex-1 text-gray-900"
+                      />
+                      <Button
                         type="button"
-                        onClick={() => setShowVariants(!showVariants)}
-                        className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeColor(index)}
                       >
-                        {showVariants ? (
-                          <ChevronUp className="h-4 w-4 mr-1" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 mr-1" />
-                        )}
-                        Variants ({variants.length})
-                      </button>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </div>
-                  </div>
-
-                  {showVariants && (
-                    <div className="space-y-4">
-                      {variants.map((variant, index) => (
-                        <div
-                          key={index}
-                          className="p-4 border rounded-lg space-y-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">
-                              Variant {index + 1}
-                            </h4>
-                            {variants.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeVariant(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`color-${index}`}
-                                className="flex items-center text-sm"
-                              >
-                                <Palette className="h-3 w-3 mr-1" />
-                                Color
-                              </Label>
-                              <Input
-                                id={`color-${index}`}
-                                value={variant.color}
-                                onChange={(e) =>
-                                  handleVariantChange(
-                                    index,
-                                    "color",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="e.g., Red, Blue"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`size-${index}`}
-                                className="flex items-center text-sm"
-                              >
-                                <Ruler className="h-3 w-3 mr-1" />
-                                Size
-                              </Label>
-                              <Input
-                                id={`size-${index}`}
-                                value={variant.size}
-                                onChange={(e) =>
-                                  handleVariantChange(
-                                    index,
-                                    "size",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="e.g., S, M, L, 10kg"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`unit-${index}`}
-                                className="flex items-center text-sm"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Unit
-                              </Label>
-                              <Input
-                                id={`unit-${index}`}
-                                value={variant.unit}
-                                onChange={(e) =>
-                                  handleVariantChange(
-                                    index,
-                                    "unit",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="e.g., Pack, Box, Piece"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`price-${index}`}
-                                className="flex items-center text-sm"
-                              >
-                                <Tag className="h-3 w-3 mr-1" />
-                                Price (Br) *
-                              </Label>
-                              <Input
-                                id={`price-${index}`}
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={variant.price}
-                                onChange={(e) =>
-                                  handleVariantChange(
-                                    index,
-                                    "price",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="0.00"
-                                required={hasVariants}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                        <p>
-                          • Each variant must have at least one attribute
-                          (color, size, or unit)
-                        </p>
-                        <p>• All variants must have a price</p>
-                        <p>
-                          • Variants with identical attributes will be merged
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  ))}
                   <Button
                     type="button"
                     variant="outline"
+                    className="text-gray-900"
                     size="sm"
-                    onClick={addVariant}
+                    onClick={addColor}
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Variant
+                    <Plus className="h-4 w-4 mr-2" /> Add Color
                   </Button>
                 </div>
-              )}
+              </div>
 
-              {/* Product Images */}
+              {/* Sizes Section */}
+              <div className="space-y-4 border rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Sizes & Prices
+                </h3>
+                <div className="space-y-2">
+                  {sizes.map((size, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        value={size.name}
+                        onChange={(e) => updateSizeName(index, e.target.value)}
+                        placeholder="Size (e.g., S, M, L)"
+                        className="flex-1 text-gray-900"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={size.price}
+                        onChange={(e) =>
+                          updateSizePrice(index, parseFloat(e.target.value))
+                        }
+                        placeholder="Price"
+                        className="w-24 text-gray-900"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSize(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-gray-900"
+                    size="sm"
+                    onClick={addSize}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Add Size
+                  </Button>
+                </div>
+              </div>
+
+              {/* Images – same as before */}
               <div className="space-y-6">
                 <h3 className="text-lg font-medium text-gray-900">
                   Product Images
@@ -720,7 +586,7 @@ export default function EditProductPage() {
 
                 {/* Main Image */}
                 <div className="space-y-2">
-                  <Label>Main Image (first)</Label>
+                  <Label className="text-gray-900">Main Image (first)</Label>
                   <div className="flex items-center gap-4">
                     {(mainPreview || mainExisting) && (
                       <div className="relative w-24 h-24 border rounded-md overflow-hidden">
@@ -739,7 +605,7 @@ export default function EditProductPage() {
                       </div>
                     )}
                     {!mainPreview && !mainExisting && (
-                      <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <label className="w-24 h-24 border-2 border-gray-300 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
                         <Upload className="h-6 w-6 text-gray-400" />
                         <span className="text-xs text-gray-500">Upload</span>
                         <input
@@ -755,7 +621,9 @@ export default function EditProductPage() {
 
                 {/* Secondary Image */}
                 <div className="space-y-2">
-                  <Label>Secondary Image (second)</Label>
+                  <Label className="text-gray-900">
+                    Secondary Image (second)
+                  </Label>
                   <div className="flex items-center gap-4">
                     {(secondaryPreview || secondaryExisting) && (
                       <div className="relative w-24 h-24 border rounded-md overflow-hidden">
@@ -774,7 +642,7 @@ export default function EditProductPage() {
                       </div>
                     )}
                     {!secondaryPreview && !secondaryExisting && (
-                      <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                      <label className="w-24 h-24 border-2 border-gray-300 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
                         <Upload className="h-6 w-6 text-gray-400" />
                         <span className="text-xs text-gray-500">Upload</span>
                         <input
@@ -790,7 +658,7 @@ export default function EditProductPage() {
 
                 {/* Additional Images */}
                 <div className="space-y-2">
-                  <Label>Additional Images</Label>
+                  <Label className="text-gray-900">Additional Images</Label>
                   <div className="flex flex-wrap gap-4">
                     {additionalExisting.map((url, idx) => (
                       <div
@@ -834,7 +702,7 @@ export default function EditProductPage() {
                         </button>
                       </div>
                     ))}
-                    <label className="w-24 h-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
+                    <label className="w-24 h-24 border-2 border-gray-300 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-[#f73a00]">
                       <Upload className="h-6 w-6 text-gray-400" />
                       <span className="text-xs text-gray-500">Add more</span>
                       <input
@@ -849,13 +717,13 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              {/* Action Buttons - Mobile Optimized */}
+              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3 pt-6">
                 <Button
                   type="button"
                   variant="destructive"
                   onClick={() => setShowDeleteDialog(true)}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto bg-red-500"
                 >
                   Delete Product
                 </Button>
