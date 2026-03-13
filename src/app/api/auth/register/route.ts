@@ -4,6 +4,7 @@ import { createToken } from '@/lib/auth/jwt';
 import { registerServerSchema } from '@/lib/auth/schemas';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import dns from 'dns/promises';
+import { verifyEmail } from '@/lib/email-verification'; // adjust path if needed
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const validatedData = registerServerSchema.parse(body);
 
-    // 1. Extract domain from email
+    // 1. Extract domain
     const domain = validatedData.email.split('@')[1];
     if (!domain) {
       return NextResponse.json(
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. MX record lookup (basic domain validation)
+    // 2. MX record lookup (optional but cheap)
     try {
       const mxRecords = await dns.resolveMx(domain);
       if (!mxRecords || mxRecords.length === 0) {
@@ -38,10 +39,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Proceed with registration
     const supabase = await createAdminClient();
 
-    // Check if user already exists
+    // 3. Check if email already exists in DB (before calling DeBounce)
     const { data: existing } = await supabase
       .from('users')
       .select('id')
@@ -55,6 +55,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 4. DeBounce verification (only if email is new)
+    if (process.env.DEBOUNCE_API_KEY) {
+      try {
+        const verification = await verifyEmail(validatedData.email);
+        if (!verification.valid) {
+          return NextResponse.json(
+            { error: verification.reason || 'Email is invalid or undeliverable' },
+            { status: 400 }
+          );
+        }
+      } catch (verifyError) {
+        console.error('Email verification error:', verifyError);
+        // Fail open – allow registration but log error (or return 503 if you prefer)
+        return NextResponse.json(
+          { error: 'Email verification service unavailable. Please try again later.' },
+          { status: 503 }
+        );
+      }
+    } else {
+      console.warn('DEBOUNCE_API_KEY not set – skipping email verification');
+    }
+
+    // 5. Create user
     const hashedPassword = await hashPassword(validatedData.password);
 
     const { data: user, error } = await supabase
