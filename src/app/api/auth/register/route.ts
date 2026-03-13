@@ -4,7 +4,6 @@ import { createToken } from '@/lib/auth/jwt';
 import { registerServerSchema } from '@/lib/auth/schemas';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import dns from 'dns/promises';
-import { verifyEmail } from '@/lib/email-verification';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. MX record lookup
+    // 2. MX record lookup (basic domain validation)
     try {
       const mxRecords = await dns.resolveMx(domain);
       if (!mxRecords || mxRecords.length === 0) {
@@ -39,30 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. ZeroBounce verification (skip if no API key for now – but log warning)
-    if (process.env.ZEROBOUNCE_API_KEY) {
-      try {
-        const verification = await verifyEmail(validatedData.email);
-        if (!verification.valid) {
-          return NextResponse.json(
-            { error: verification.reason || 'Email is invalid or undeliverable' },
-            { status: 400 }
-          );
-        }
-      } catch (verifyError) {
-        console.error('Email verification error:', verifyError);
-        // Fail open – allow registration but log error (you may decide to block)
-        // Optionally return an error if you want strict verification
-        return NextResponse.json(
-          { error: 'Email verification service unavailable. Please try again later.' },
-          { status: 503 }
-        );
-      }
-    } else {
-      console.warn('ZEROBOUNCE_API_KEY not set – skipping email verification');
-    }
-
-    // 4. Proceed with registration
+    // 3. Proceed with registration
     const supabase = await createAdminClient();
 
     // Check if user already exists
@@ -134,7 +110,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Registration error:', error);
 
-    // Handle Zod validation errors
     if (error.name === 'ZodError') {
       const firstError = error.errors[0];
       return NextResponse.json(
@@ -143,7 +118,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Handle JSON parsing error
     if (error.message === 'Invalid JSON body') {
       return NextResponse.json(
         { error: 'Invalid request body' },
@@ -151,7 +125,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generic server error
     return NextResponse.json(
       { error: 'Internal server error. Please try again later.' },
       { status: 500 }
