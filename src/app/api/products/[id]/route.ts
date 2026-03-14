@@ -27,7 +27,8 @@ export async function GET(
       .eq('id', id);
 
     if (!isAdmin) {
-      query = query.eq('status', 'approved');
+      query = query.eq('status', 'approved')
+      .is('deleted_at', null);
     }
 
     const { data: product, error } = await query.single();
@@ -178,9 +179,10 @@ async function deleteProduct(
     const { id } = await params;
     const supabase = await createAdminClient();
 
+    // 1. Check if product exists (and is not already soft‑deleted)
     const { data: existingProduct } = await supabase
       .from('products')
-      .select('id, title, images')
+      .select('id, title, images, deleted_at')
       .eq('id', id)
       .single();
 
@@ -188,8 +190,43 @@ async function deleteProduct(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // 2. Check for any order items referencing this product
+    const { count: orderItemsCount, error: countError } = await supabase
+      .from('order_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('product_id', id);
+
+    if (countError) {
+      console.error('Error checking order items:', countError);
+      return NextResponse.json(
+        { error: 'Failed to verify if product has been ordered' },
+        { status: 500 }
+      );
+    }
+
+    // 3. If product has been ordered → soft delete (mark as deleted)
+    if (orderItemsCount && orderItemsCount > 0) {
+      const { error: softDeleteError } = await supabase
+        .from('products')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (softDeleteError) throw softDeleteError;
+
+      return NextResponse.json({
+        message: `Product "${existingProduct.title}" has been hidden (soft deleted) because it has been ordered.`,
+        softDelete: true,
+      });
+    }
+
+    // 4. No order items – safe to hard delete
+    // Delete images from storage
     await deleteProductFolder(id);
+
+    // Delete variants (cascade should handle, but we do it explicitly)
     await supabase.from('product_variants').delete().eq('product_id', id);
+
+    // Finally delete the product
     const { error: productError } = await supabase
       .from('products')
       .delete()
@@ -198,7 +235,7 @@ async function deleteProduct(
     if (productError) throw productError;
 
     return NextResponse.json({
-      message: `Product "${existingProduct.title}" deleted successfully`,
+      message: `Product "${existingProduct.title}" deleted permanently.`,
     });
   } catch (error: any) {
     console.error('Delete product error:', error);

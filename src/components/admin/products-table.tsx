@@ -56,10 +56,8 @@ interface Product {
     id: string;
     title: string;
   } | null;
-  // New fields
   colors: string[];
   sizes: Array<{ name: string; price: number }>;
-  // Keep product_variants for backward compatibility (optional)
   product_variants?: Array<{
     id: string;
     color?: string;
@@ -284,15 +282,27 @@ export default function ProductsTable({
         method: "DELETE",
       });
 
-      if (res.ok) {
-        // Optimistically remove from UI
-        setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
-        toast.success("Product deleted successfully");
-        setProductToDelete(null);
-      } else {
-        const data = await res.json();
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Handle non-200 responses (like 500, 404)
         toast.error(data.error || "Failed to delete product");
+        return;
       }
+
+      // Success – remove from UI (product is now either soft-deleted or permanently deleted)
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+
+      // Show appropriate message based on whether it was soft or hard deleted
+      if (data.softDelete) {
+        toast.success(
+          "Product has been hidden (soft deleted) because it has orders.",
+        );
+      } else {
+        toast.success("Product deleted permanently.");
+      }
+
+      setProductToDelete(null);
     } catch (error) {
       console.error("Delete error:", error);
       toast.error("Failed to delete product");
