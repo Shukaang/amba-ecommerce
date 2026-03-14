@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
       `,
         { count: 'exact' }
       )
-      .eq('status', 'approved')
-      .is('deleted_at', null); 
+      .is('deleted_at', null)
+      .eq('status', 'approved'); 
 
     if (isNew) {
       const twoWeeksAgo = new Date();

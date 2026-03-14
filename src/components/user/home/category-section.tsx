@@ -58,6 +58,7 @@ export default function CategorySection({
           categories(title)
         `,
         )
+        .is("deleted_at", null)
         .in("category_id", descendantIds)
         .eq("status", "approved")
         .order("average_rating", { ascending: false })

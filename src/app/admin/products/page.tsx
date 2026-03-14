@@ -19,6 +19,7 @@ export default async function AdminProductsPage() {
       updater:users!products_updated_by_fkey(id, name, email)
     `,
     )
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   // Fetch all categories with parent_id for hierarchy

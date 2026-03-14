@@ -24,6 +24,7 @@ export async function GET(
         product_variants(*),
         ratings(*, users(name, email))
       `)
+      .is('deleted_at', null)
       .eq('id', id);
 
     if (!isAdmin) {
