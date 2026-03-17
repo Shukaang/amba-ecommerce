@@ -20,6 +20,7 @@ import {
   ChevronRight,
   LogIn,
   UserPlus,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -246,6 +247,7 @@ export default function UserHeader({
       "/forgot-password",
       "/verify-otp",
       "/reset-password",
+      "/change-password",
     ].includes(pathname)
   )
     return null;
@@ -288,8 +290,8 @@ export default function UserHeader({
           <div className="flex justify-between items-center h-20">
             {/* Logo + Brand - text hidden on mobile */}
             <Link href="/" className="flex items-center gap-1 shrink-0">
-              <ShoppingBag className="text-[#00014a] h-6 w-6" />
-              <span className="text-[#00014a] text-xl font-semibold hidden lg:inline">
+              <ShoppingBag className="text-[#f73a00] h-6 w-6" />
+              <span className="text-[#f73a00] text-xl font-semibold hidden lg:inline">
                 Amba<span className="text-[#f73a00]">Store</span>
               </span>
             </Link>
@@ -625,6 +627,16 @@ export default function UserHeader({
                       </Link>
                     </DropdownMenuItem>
 
+                    <DropdownMenuItem
+                      asChild
+                      className="cursor-pointer hover:bg-gray-100 focus:bg-gray-100"
+                    >
+                      <Link href="/favorites" className="text-gray-700">
+                        <Heart className="mr-2 h-4 w-4" />
+                        Favorites
+                      </Link>
+                    </DropdownMenuItem>
+
                     {["ADMIN", "SUPERADMIN"].includes(user.role) && (
                       <>
                         <DropdownMenuSeparator className="bg-gray-200" />
@@ -780,6 +792,15 @@ export default function UserHeader({
                     >
                       <Package className="h-5 w-5" />
                       <span>My Orders</span>
+                    </Link>
+
+                    <Link
+                      href="/favorites"
+                      className="flex items-center gap-3 py-2 text-gray-700 hover:text-[#f73a00]"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Heart className="h-5 w-5" />
+                      <span>Favorites</span>
                     </Link>
 
                     {["ADMIN", "SUPERADMIN"].includes(user.role) && (

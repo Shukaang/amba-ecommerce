@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/context";
 import { CartProvider } from "@/lib/cart/context";
+import { FavoritesProvider } from "@/lib/favorites/context";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import UserHeader from "@/components/user/users-header";
@@ -105,18 +106,20 @@ export default async function RootLayout({
         >
           <AuthProvider>
             <CartProvider>
-              <PageTracker />
-              <div className="w-full min-h-screen flex flex-col">
-                <Suspense fallback={<HeaderSkeleton />}>
-                  <UserHeader categories={categoryTree} />
-                </Suspense>
-                <main className="flex-1">{children}</main>
-                <Suspense fallback={<FooterSkeleton />}>
-                  <Footer categories={categoryTree} />
-                </Suspense>
-              </div>
-              <Toaster position="top-right" />
-              <div id="cart-animation-element" />
+              <FavoritesProvider>
+                <PageTracker />
+                <div className="w-full min-h-screen flex flex-col">
+                  <Suspense fallback={<HeaderSkeleton />}>
+                    <UserHeader categories={categoryTree} />
+                  </Suspense>
+                  <main className="flex-1">{children}</main>
+                  <Suspense fallback={<FooterSkeleton />}>
+                    <Footer categories={categoryTree} />
+                  </Suspense>
+                </div>
+                <Toaster position="top-right" />
+                <div id="cart-animation-element" />
+              </FavoritesProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

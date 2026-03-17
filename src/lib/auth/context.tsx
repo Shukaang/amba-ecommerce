@@ -16,6 +16,7 @@ interface User {
   status: "ACTIVE" | "INACTIVE" | "BANNED";
   created_at: string;
   updated_at: string;
+  password_changed_at: string;
 }
 
 interface AuthContextType {
@@ -31,6 +32,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: data.user.status || "ACTIVE",
           created_at: data.user.created_at,
           updated_at: data.user.updated_at,
+          password_changed_at: new Date().toISOString(),
         });
       } else {
         setUser(null);
@@ -112,9 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: userData.user.status,
           created_at: userData.user.created_at,
           updated_at: userData.user.updated_at,
+          password_changed_at: userData.user.password_changed_at,
         });
         // After setting user
-        const sessionId = getSessionId(); // from '@/lib/tracking/session'
+        const sessionId = getSessionId();
         if (sessionId) {
           fetch("/api/track/identify", {
             method: "POST",
@@ -134,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: "ACTIVE",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          password_changed_at: new Date().toISOString(),
         });
       }
       toast.success("Login successful!");
@@ -193,6 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: userData.user.status,
           created_at: userData.user.created_at,
           updated_at: userData.user.updated_at,
+          password_changed_at: userData.user.password_changed_at,
         });
       }
 
@@ -229,9 +235,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((prev) => (prev ? { ...prev, ...userData } : null));
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name || "",
+          phone: data.user.phone || "",
+          address: data.user.address || "",
+          role: data.user.role || "CUSTOMER",
+          status: data.user.status || "ACTIVE",
+          created_at: data.user.created_at,
+          updated_at: data.user.updated_at,
+          password_changed_at: data.user.password_changed_at,
+        });
+      } else if (res.status === 401) {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, updateUser }}
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        updateUser,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

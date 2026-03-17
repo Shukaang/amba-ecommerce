@@ -69,8 +69,8 @@ export async function PUT(
 
     if (fullError) throw fullError;
 
-    // Send email if status becomes CONFIRMED (async)
-    if (status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
+    // Send email if status changes from PENDING to CONFIRMED
+if (status === 'CONFIRMED' && existing.status === 'PENDING') {
   if (fullOrder.users?.email && fullOrder.order_number) {
     const items = fullOrder.order_items.map((item: any) => ({
       title: item.products.title,
@@ -81,11 +81,11 @@ export async function PUT(
             .filter(Boolean)
             .join(' • ')
         : undefined,
-      image: item.products.images?.[0]   // <-- this line was missing
+      image: item.products.images?.[0]
     }));
 
     const deliveryInfo =
-      'Delivery within 2 weeks. Free in Addis Ababa, EMS shipping fee applies to other cities.';
+      'Delivery within 2-3 weeks. Free in Addis Ababa, EMS shipping fee applies to other cities.';
 
     sendOrderConfirmedEmail({
       to: fullOrder.users.email,

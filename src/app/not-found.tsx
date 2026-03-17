@@ -20,7 +20,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="text-center">
-        <h1 className="text-9xl font-bold text-gray-200">404</h1>
+        <h1 className="text-9xl font-bold text-[#f73a00]/30">404</h1>
         <h2 className="text-3xl font-bold text-gray-900 mt-4">
           Page Not Found
         </h2>
@@ -33,13 +33,16 @@ export default function NotFound() {
           <Button
             onClick={handleGoBack}
             variant="outline"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />
             Go Back
           </Button>
 
-          <Button asChild className="flex items-center gap-2">
+          <Button
+            asChild
+            className="flex bg-[#f73a00] text-white items-center gap-2"
+          >
             <Link href="/">
               <Home className="h-4 w-4" />
               Back to Home
@@ -48,17 +51,17 @@ export default function NotFound() {
         </div>
         {/* Additional Help */}
         <div className="mt-12 pt-8 border-t border-gray-200">
-          <p className="text-sm text-gray-500 mb-4">Need help?</p>
+          <p className="text-sm text-gray-500 mb-4 underline">Need help?</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/products"
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              className="text-sm text-[#f73a00] hover:text-[#f73a00]/90 hover:underline"
             >
               Browse Products
             </Link>
             <Link
-              href="/contact"
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              href="/"
+              className="text-sm text-[#f73a00] hover:text-[#f73a00]/90 hover:underline"
             >
               Contact Support
             </Link>

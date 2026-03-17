@@ -77,7 +77,7 @@ export async function PUT(
       product: {
         title: updatedItem.products.title,
         images: updatedItem.products.images,
-        slug: updatedItem.products.slug, // Include slug
+        slug: updatedItem.products.slug,
       },
       variant: updatedItem.product_variants ? {
         color: updatedItem.product_variants.color,

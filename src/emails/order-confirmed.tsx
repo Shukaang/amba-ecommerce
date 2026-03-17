@@ -76,6 +76,8 @@ export const OrderConfirmedEmail = ({
     return price * quantity;
   };
 
+  const halfAmount = total / 2;
+
   return (
     <Html>
       <Head />
@@ -201,14 +203,31 @@ export const OrderConfirmedEmail = ({
                 <Text style={summaryValueFree}>Free (Addis Ababa)</Text>
               </Column>
             </Row>
+
+            {/* Payment breakdown – half now, half on delivery */}
+            <Row style={summaryRow}>
+              <Column>
+                <Text style={summaryLabel}>Amount you paid</Text>
+              </Column>
+              <Column align="right">
+                <Text style={summaryValue}>{formatPrice(halfAmount)}</Text>
+              </Column>
+            </Row>
+            <Row style={summaryRow}>
+              <Column>
+                <Text style={summaryLabel}>Amount due on delivery</Text>
+              </Column>
+              <Column align="right">
+                <Text style={summaryValue}>{formatPrice(halfAmount)}</Text>
+              </Column>
+            </Row>
+
             <Row style={summaryRow}>
               <Column>
                 <Text style={summaryLabel}>Payment</Text>
               </Column>
               <Column align="right">
-                <Text style={summaryValue}>
-                  Pay on Delivery (50% now, 50% later)
-                </Text>
+                <Text style={summaryValue}>Pay 50% now, 50% on Delivery</Text>
               </Column>
             </Row>
             <Hr style={divider} />
@@ -251,7 +270,7 @@ export const OrderConfirmedEmail = ({
   );
 };
 
-// Styles
+// Styles (unchanged)
 const main = {
   backgroundColor: "#f6f9fc",
   fontFamily:

@@ -187,144 +187,166 @@ Address: ${formData.address}`;
   };
 
   if (orderPlaced) {
+    const halfAmount = orderTotal / 2;
+
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-4 sm:py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          {/* Success Card */}
-          <Card className="border-0 shadow-xl rounded-2xl overflow-hidden bg-white">
-            {/* Header with animated check */}
-            <CardHeader className="bg-[#087f00] text-white p-6 sm:p-8 rounded-t-lg relative overflow-hidden">
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-8 -mb-8" />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white px-3">
+        <div className="max-w-lg mx-auto">
+          {/* Success Card - smaller, tighter */}
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
+            {/* Header with check - smaller */}
+            <CardHeader className="bg-[#087f00] text-white rounded-t-xl p-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-6 -mt-6" />
+              <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-5 -mb-5" />
 
               <div className="relative">
-                <div className="flex items-center justify-center mb-3 sm:mb-4">
-                  <div className="h-16 w-16 sm:h-20 sm:w-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-pulse">
-                    <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                <div className="flex items-center justify-center mb-2">
+                  <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-pulse">
+                    <CheckCircle className="h-6 w-6 text-white" />
                   </div>
                 </div>
-                <CardTitle className="text-2xl sm:text-3xl font-bold text-center mb-2">
+                <CardTitle className="text-xl font-bold text-center mb-1">
                   Order Submitted!
                 </CardTitle>
-                <CardDescription className="text-green-50 text-center text-base sm:text-lg">
+                <CardDescription className="text-green-50 text-center text-sm">
                   Thank you for your purchase
                 </CardDescription>
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-white">
-              {/* Status Banner - Mobile Optimized */}
-              <div className="bg-orange-50 rounded-xl p-4 sm:p-6 border border-orange-100">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-[#f73a00] shrink-0" />
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
+            <CardContent className="p-4 space-y-3 bg-white">
+              {/* Status Banner - compact */}
+              <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-[#f73a00]" />
+                    <span className="font-medium text-gray-900 text-xs">
                       Order Status
                     </span>
                   </div>
-                  <Badge className="bg-yellow-100 text-[#f73a00] px-3 py-1.5 w-fit text-xs sm:text-sm font-medium">
-                    PENDING CONFIRMATION
+                  <Badge className="bg-yellow-100 text-[#f73a00] px-2 py-0.5 text-xs font-medium">
+                    PENDING
                   </Badge>
                 </div>
-                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                  Your order is pending confirmation. We'll contact you via
-                  phone shortly to confirm details and provide your order
-                  number.
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  We'll contact you via phone shortly to confirm.
                 </p>
               </div>
 
-              {/* Order Details - Mobile Optimized Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Receipt className="h-4 w-4 text-gray-500" />
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">
-                      Reference
+              {/* Order Details - two compact cards */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-gray-50 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Receipt className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+                      Ref
                     </span>
                   </div>
-                  <p className="font-mono text-sm sm:text-base text-gray-900 break-all">
-                    {orderId.substring(0, 12)}...
+                  <p className="font-mono text-xs text-gray-900 break-all">
+                    {orderId.substring(0, 10)}...
                   </p>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShoppingBag className="h-4 w-4 text-gray-500" />
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">
-                      Total Amount
+                <div className="bg-gray-50 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <ShoppingBag className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+                      Total
                     </span>
                   </div>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                    ETB {orderTotal.toLocaleString("en-US")}
+                  <p className="text-sm font-bold text-gray-900">
+                    ETB {orderTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              {/* What happens next - Mobile Optimized */}
-              <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
-                <h4 className="font-semibold text-gray-900 mb-3 text-base sm:text-lg">
-                  What happens next?
+              {/* Payment & Delivery Info - NEW */}
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900">
+                      Pay half now
+                    </p>
+                    <p className="text-[11px] text-blue-800">
+                      ETB {halfAmount.toLocaleString()} on delivery (50%)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Truck className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900">
+                      Delivery
+                    </p>
+                    <p className="text-[11px] text-blue-800">
+                      Free in Addis Ababa • EMS fee for other cities
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* What happens next - compact */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-2 text-xs">
+                  Next steps
                 </h4>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 bg-white p-3 rounded-lg">
-                    <div className="h-6 w-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border border-gray-100">
+                    <div className="h-5 w-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                       <PhoneCall className="h-3 w-3 text-[#f73a00]" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Phone Verification
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900">
+                        Phone verification
                       </p>
-                      <p className="text-xs text-gray-500">
-                        We'll call within 24 hours
-                      </p>
+                      <p className="text-[10px] text-gray-500">Within 24h</p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400 ml-auto shrink-0" />
+                    <ChevronRight className="h-3 w-3 text-gray-400 shrink-0" />
                   </div>
-
-                  <div className="flex items-start gap-3 bg-white p-3 rounded-lg">
-                    <div className="h-6 w-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border border-gray-100">
+                    <div className="h-5 w-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                       <Receipt className="h-3 w-3 text-[#f73a00]" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Order Confirmation
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900">
+                        Order number
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Receive your order number (ORD-XXXX-XXXX)
+                      <p className="text-[10px] text-gray-500">
+                        You will receive ORD-XXXX-XXXX
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400 ml-auto shrink-0" />
+                    <ChevronRight className="h-3 w-3 text-gray-400 shrink-0" />
                   </div>
-
-                  <div className="flex items-start gap-3 bg-white p-3 rounded-lg">
-                    <div className="h-6 w-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border border-gray-100">
+                    <div className="h-5 w-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                       <MapPinned className="h-3 w-3 text-[#f73a00]" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Delivery Arrangement
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900">
+                        Delivery arranged
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Based on your location
+                      <p className="text-[10px] text-gray-500">
+                        Based on location
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400 ml-auto shrink-0" />
+                    <ChevronRight className="h-3 w-3 text-gray-400 shrink-0" />
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons - Stack on mobile, side by side on desktop */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              {/* Action Buttons - stacked on mobile, inline on larger screens */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
                 <Button
                   onClick={() => router.push("/orders")}
-                  className="bg-gradient-to-r from-[#f73a00] to-[#f73a00] hover:from-[#f73a00] hover:to-orange-700 text-white rounded-xl py-4 sm:py-6 text-sm sm:text-base w-full sm:w-1/2"
+                  className="bg-[#f73a00] hover:bg-[#f73a00]/90 text-white rounded-lg py-2.5 text-sm w-full sm:w-1/2"
                 >
                   Track My Orders
                 </Button>
                 <Button
                   onClick={() => router.push("/products")}
-                  className="rounded-xl border-orange-200 hover:bg-orange-50 bg-white text-gray-900 py-4 sm:py-6 text-sm w-full sm:w-1/2"
+                  variant="outline"
+                  className="rounded-lg border-orange-200 text-gray-900 hover:bg-orange-50 py-2.5 text-sm w-full sm:w-1/2"
                 >
                   Continue Shopping
                 </Button>
@@ -644,7 +666,7 @@ Address: ${formData.address}`;
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-[60vh] bg-white">
               <div className="prose max-w-none">
                 <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-                  Effective Date: {new Date().toLocaleDateString()}
+                  Effective Date: 22/2/2026
                 </p>
 
                 <div className="space-y-4 sm:space-y-6">

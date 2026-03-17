@@ -11,10 +11,9 @@ export default function VisitorsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Visitor Tracking</h1>
+        <h1 className="text-2xl font-bold">Visitor Analytics</h1>
         <p className="text-gray-600">Monitor all user sessions and activity</p>
       </div>
-      <h1 className="text-2xl font-bold mb-6">Visitor Analytics</h1>
       <VisitorAnalyticsDashboard />
       <VisitorTrackingTable />
     </div>

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       product: {
         title: item.products.title,
         images: item.products.images,
-        slug: item.products.slug, // Include slug
+        slug: item.products.slug,
       },
       variant: item.product_variants ? {
         color: item.product_variants.color,

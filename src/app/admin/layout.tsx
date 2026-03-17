@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth/jwt";
 import { createAdminClient } from "@/lib/supabase/supabaseServer";
@@ -13,12 +13,12 @@ export default async function AdminLayout({
   const token = cookieStore.get("auth-token")?.value;
 
   if (!token) {
-    redirect("/login");
+    notFound(); // instead of redirect
   }
 
   const decoded = verifyToken(token);
   if (!decoded) {
-    redirect("/login");
+    notFound();
   }
 
   const supabase = await createAdminClient();
@@ -30,11 +30,11 @@ export default async function AdminLayout({
     .single();
 
   if (!userData || !["ADMIN", "SUPERADMIN"].includes(userData.role)) {
-    redirect("/products");
+    notFound();
   }
 
   if (userData.status !== "ACTIVE") {
-    redirect("/login");
+    notFound();
   }
 
   return <AdminLayoutClient user={userData}>{children}</AdminLayoutClient>;

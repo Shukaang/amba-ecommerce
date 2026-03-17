@@ -4,7 +4,7 @@ import { createToken } from '@/lib/auth/jwt';
 import { registerServerSchema } from '@/lib/auth/schemas';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import dns from 'dns/promises';
-import { verifyEmail } from '@/lib/email-verification'; // adjust path if needed
+import { verifyEmail } from '@/lib/email-verification';
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,10 +88,11 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         phone: validatedData.phone || null,
         address: validatedData.address || null,
+        password_changed_at: new Date().toISOString(),
         role: 'CUSTOMER',
         status: 'ACTIVE'
       })
-      .select('id, email, name, phone, address, role, status, created_at, updated_at')
+      .select('id, email, name, phone, address, role, status, created_at, updated_at, password_changed_at')
       .single();
 
     if (error) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         phone: user.phone,
         address: user.address,
+        password_changed_at: user.password_changed_at,
         role: user.role,
         status: user.status,
       },

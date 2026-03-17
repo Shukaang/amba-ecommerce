@@ -141,7 +141,7 @@ export default function HeroSection() {
         {/* Content (unchanged) */}
         <div className="relative z-30 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col pt-15">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#00014a]/80 backdrop-blur-md rounded-full border border-white/70 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#ffe9ad]/50 backdrop-blur-sm rounded-full border border-white/70 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
               <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-[#f73a00]" />
               {slides[currentSlide].subtitle}
             </div>
@@ -153,7 +153,7 @@ export default function HeroSection() {
                     <span className="absolute -bottom-1 sm:-bottom-2 left-0 w-full h-0.5 sm:h-1 bg-[#f73a00] rounded-full"></span>
                   </span>
                 ) : (
-                  <span key={i} className="text-[#00014a]">
+                  <span key={i} className="text-[#ffe9ad]">
                     {word}{" "}
                   </span>
                 ),

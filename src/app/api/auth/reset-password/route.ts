@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/supabaseServer';
 import { verifyResetToken } from '@/lib/auth/jwt';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '@/lib/auth/password';
 import { z } from 'zod';
 
 const resetSchema = z.object({
@@ -19,11 +19,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validation = resetSchema.safeParse(body);
     if (!validation.success) {
-  return NextResponse.json(
-    { error: validation.error.issues[0].message },
-    { status: 400 }
-  );
-}
+      return NextResponse.json(
+        { error: validation.error.issues[0].message },
+        { status: 400 }
+      );
+    }
 
     const { token, password } = validation.data;
 
@@ -52,13 +52,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // 3. Hash new password using your utility
+    const hashedPassword = await hashPassword(password);
 
-    // 4. Update password
+    // 4. Update password AND password_changed_at
     const { error: updateError } = await supabase
       .from('users')
-      .update({ password: hashedPassword, updated_at: new Date().toISOString() })
+      .update({ 
+        password: hashedPassword, 
+        updated_at: new Date().toISOString(),
+        password_changed_at: new Date().toISOString()
+      })
       .eq('id', user.id);
 
     if (updateError) throw updateError;

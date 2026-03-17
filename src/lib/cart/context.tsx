@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { useAuth } from "@/lib/auth/context";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -49,17 +50,17 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Calculate totals
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Fetch cart from server (initial load and after user changes)
   const fetchCart = useCallback(async () => {
     if (!user) {
       setItems([]);
@@ -87,33 +88,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCart();
   }, [fetchCart]);
 
-  // Helper to find existing item index
   const findItemIndex = (productId: string, variantId: string | null) => {
     return items.findIndex(
       (item) => item.productId === productId && item.variantId === variantId,
     );
   };
 
-  // Optimistic add to cart
+  // Unified authentication guard – shows toast and redirects
+  const requireAuth = (): boolean => {
+    if (!user) {
+      toast.error("Please login to manage your cart");
+      const returnUrl = encodeURIComponent(pathname);
+      router.push(`/login?redirectTo=${returnUrl}`);
+      return false;
+    }
+    return true;
+  };
+
   const addToCart = async (newItem: {
     productId: string;
     variantId: string | null;
     quantity: number;
     price: number;
   }) => {
-    if (!user) {
-      toast.error("Please login to add items to cart");
-      throw new Error("Not authenticated");
-    }
+    if (!requireAuth()) return; // will redirect and stop execution
 
-    // Optimistic update
     const existingIndex = findItemIndex(newItem.productId, newItem.variantId);
     let previousItems: CartItem[] = [];
 
     setItems((current) => {
       previousItems = [...current];
       if (existingIndex >= 0) {
-        // Update existing item quantity
         const updated = [...current];
         updated[existingIndex] = {
           ...updated[existingIndex],
@@ -121,7 +126,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         };
         return updated;
       } else {
-        // Create temporary optimistic item (will be replaced)
         const optimisticItem: CartItem = {
           id: `temp-${Date.now()}`,
           productId: newItem.productId,
@@ -152,15 +156,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Failed to add to cart");
       }
 
-      // Replace optimistic item with real data from server (includes slug)
       setItems((current) => {
         if (existingIndex >= 0) {
-          // Update existing item with server data
           return current.map((item) =>
             item.id === data.item.id ? data.item : item,
           );
         } else {
-          // Remove optimistic item and add real one
           return current
             .filter((item) => !item.id.startsWith("temp-"))
             .concat(data.item);
@@ -169,15 +170,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       toast.success("Item added to cart!");
     } catch (error: any) {
-      // Revert on error
       setItems(previousItems);
       toast.error(error.message);
       throw error;
     }
   };
 
-  // Optimistic update quantity
   const updateQuantity = async (itemId: string, newQuantity: number) => {
+    if (!requireAuth()) return;
+
     if (newQuantity < 1) {
       await removeItem(itemId);
       return;
@@ -204,7 +205,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Failed to update quantity");
       }
 
-      // Update with server response (includes slug)
       if (data.item) {
         setItems((current) =>
           current.map((item) => (item.id === itemId ? data.item : item)),
@@ -217,8 +217,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Optimistic remove
   const removeItem = async (itemId: string) => {
+    if (!requireAuth()) return;
+
     let previousItems: CartItem[] = [];
     setItems((current) => {
       previousItems = [...current];
@@ -244,8 +245,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Clear cart
   const clearCart = async () => {
+    if (!requireAuth()) return;
+
     const previousItems = [...items];
     setItems([]);
 

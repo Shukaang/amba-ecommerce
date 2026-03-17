@@ -202,7 +202,7 @@ export function ExpandableVisitorRow({
                     <div className="flex justify-between">
                       <span className="text-gray-600">Session ID:</span>
                       <span className="font-mono text-xs">
-                        {visitor.session_id}
+                        {visitor.session_id.slice(0, 32)}
                       </span>
                     </div>
                     <div className="flex justify-between">

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Star, ShoppingBag, Heart } from "lucide-react";
+import { Star, ShoppingBag, Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/lib/cart/context";
 import { useAuth } from "@/lib/auth/context";
-import { toast } from "sonner";
+import { useFavorites } from "@/lib/favorites/context";
 import { useRouter } from "next/navigation";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
 
@@ -38,9 +38,10 @@ export default function PremiumProductCard({
 }: PremiumProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const router = useRouter();
   const trackProduct = useTrackProduct();
 
@@ -52,6 +53,8 @@ export default function PremiumProductCard({
   const minPrice = hasVariants
     ? Math.min(...variantPrices, product.price)
     : product.price;
+
+  const productIsFavorite = isFavorite(product.id);
 
   const createCartAnimation = (startRect: DOMRect) => {
     const animationEl = document.createElement("div");
@@ -115,7 +118,12 @@ export default function PremiumProductCard({
     e.stopPropagation();
 
     if (!user) {
-      toast.error("Please login to add items to cart");
+      await addToCart({
+        productId: product.id,
+        variantId: null,
+        quantity: 1,
+        price: minPrice,
+      });
       return;
     }
 
@@ -141,21 +149,24 @@ export default function PremiumProductCard({
       });
 
       setTimeout(() => setIsAdding(false), 800);
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to add to cart");
+    } catch (error) {
       setIsAdding(false);
     }
   };
 
-  const toggleWishlist = (e: React.MouseEvent) => {
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isWishlisted) {
-      trackProduct(product.id, "add_to_wishlist");
+    e.stopPropagation();
+    if (favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      await toggleFavorite(product.id, product);
+      if (!productIsFavorite) {
+        trackProduct(product.id, "add_to_wishlist");
+      }
+    } finally {
+      setFavoriteLoading(false);
     }
-    setIsWishlisted(!isWishlisted);
-    toast.success(
-      isWishlisted ? "Removed from wishlist" : "Added to wishlist!",
-    );
   };
 
   return (
@@ -165,8 +176,8 @@ export default function PremiumProductCard({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Image container, etc. – unchanged */}
         <div className="relative aspect-[4/4] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+          {/* Images */}
           <div
             className={`absolute inset-0 transition-opacity duration-700 ${
               isHovered && secondaryImage !== mainImage
@@ -201,6 +212,8 @@ export default function PremiumProductCard({
               </Badge>
             )}
           </div>
+
+          {/* Favorite button */}
           <div
             className={`
               absolute top-4 right-4 flex-col gap-2 z-10
@@ -209,21 +222,28 @@ export default function PremiumProductCard({
             `}
           >
             <button
-              onClick={toggleWishlist}
-              className="h-10 w-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg hover:scale-110 hover:bg-white transition-all"
+              onClick={handleFavoriteClick}
+              disabled={favoriteLoading}
+              className="h-10 w-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg hover:scale-110 hover:bg-white transition-all disabled:opacity-50"
               aria-label={
-                isWishlisted ? "Remove from wishlist" : "Add to wishlist"
+                productIsFavorite ? "Remove from favorites" : "Add to favorites"
               }
             >
-              <Heart
-                className={`h-5 w-5 ${
-                  isWishlisted
-                    ? "fill-[#f73a00] text-[#f73a00]"
-                    : "text-[#f73a00]"
-                }`}
-              />
+              {favoriteLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-[#f73a00]" />
+              ) : (
+                <Heart
+                  className={`h-5 w-5 ${
+                    productIsFavorite
+                      ? "fill-[#f73a00] text-[#f73a00]"
+                      : "text-[#f73a00]"
+                  }`}
+                />
+              )}
             </button>
           </div>
+
+          {/* Quick add button */}
           <div
             className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
           >
@@ -238,6 +258,7 @@ export default function PremiumProductCard({
             </Button>
           </div>
         </div>
+
         <div className="py-2 px-2 flex-1">
           <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-[#f73a00] transition-colors">
             {product.title}
