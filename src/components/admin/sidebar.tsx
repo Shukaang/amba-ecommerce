@@ -9,16 +9,15 @@ import {
   Users,
   ShoppingCart,
   BarChart3,
-  Settings,
   Shield,
   Eye,
   LayoutGrid,
   Star,
   X,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth/context";
 
 interface AdminSidebarProps {
-  role: "ADMIN" | "SUPERADMIN";
   isOpen?: boolean;
   onClose?: () => void;
 }
@@ -38,19 +37,40 @@ const superAdminNavigation = [
   { name: "Security", href: "/admin/security", icon: Shield },
 ];
 
-export default function AdminSidebar({
-  role,
-  isOpen,
-  onClose,
-}: AdminSidebarProps) {
+export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
 
+  // Show nothing while loading – could be replaced with a skeleton
+  if (loading) {
+    return (
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex flex-col bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto h-full animate-pulse">
+          <div className="px-4">
+            <div className="h-8 w-32 bg-gray-200 rounded"></div>
+          </div>
+          <div className="mt-8 flex-1 px-2 space-y-2">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded-md"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user (shouldn't happen on protected pages) or not admin, return null
+  if (!user || (user.role !== "ADMIN" && user.role !== "SUPERADMIN")) {
+    return null;
+  }
+
+  const role = user.role;
   const allNavigation = [
     ...navigation,
     ...(role === "SUPERADMIN" ? superAdminNavigation : []),
   ];
 
-  // Desktop sidebar (always visible on large screens)
+  // Desktop sidebar
   const desktopSidebar = (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
       <div className="flex flex-col bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto h-full">
@@ -115,7 +135,7 @@ export default function AdminSidebar({
     </div>
   );
 
-  // Mobile sidebar (slide-out panel)
+  // Mobile sidebar (unchanged, but uses same navigation)
   const mobileSidebar = (
     <div
       className={cn(
