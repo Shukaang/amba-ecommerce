@@ -357,7 +357,7 @@ Address: ${formData.address}`;
       </div>
     );
   }
-
+  const half = orderTotal / 2;
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-4 sm:py-8 px-4">
@@ -598,6 +598,9 @@ Address: ${formData.address}`;
                         ETB {total.toLocaleString("en-US")}
                       </span>
                     </div>
+                    <p className="text-gray-600 text-sm text-right">
+                      You pay: {half.toLocaleString("en-US")}
+                    </p>
                   </div>
 
                   {/* Payment Method Info */}

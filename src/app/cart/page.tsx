@@ -88,6 +88,8 @@ export default function CartPage() {
     );
   }
 
+  const half = total / 2;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -271,6 +273,9 @@ export default function CartPage() {
                     ETB {total.toLocaleString("en-US")}
                   </span>
                 </div>
+                <p className="text-gray-600 text-sm text-right">
+                  You pay: {half.toLocaleString("en-US")}
+                </p>
               </div>
 
               <Button

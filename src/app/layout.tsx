@@ -117,7 +117,7 @@ export default async function RootLayout({
                     <Footer categories={categoryTree} />
                   </Suspense>
                 </div>
-                <Toaster position="top-right" />
+                <Toaster position="top-right" duration={2000} />
                 <div id="cart-animation-element" />
               </FavoritesProvider>
             </CartProvider>
