@@ -108,16 +108,12 @@ export default function EditCategoryPage() {
           setExistingImage(categoryData.category.image);
         }
       } else {
-        toast.error("Category not found", {
-          duration: 1000,
-        });
+        toast.error("Category not found");
         router.push("/admin/categories");
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      toast.error("Failed to load category data", {
-        duration: 1000,
-      });
+      toast.error("Failed to load category data");
     } finally {
       setLoading(false);
     }
@@ -195,14 +191,10 @@ export default function EditCategoryPage() {
         throw new Error(data.error || "Failed to update category");
       }
 
-      toast.success("Category updated successfully!", {
-        duration: 1000,
-      });
+      toast.success("Category updated successfully!");
       router.push("/admin/categories");
     } catch (error: any) {
-      toast.error(error.message, {
-        duration: 1000,
-      });
+      toast.error(error.message);
     } finally {
       setSaving(false);
     }
@@ -225,14 +217,10 @@ export default function EditCategoryPage() {
         throw new Error(data.error || "Failed to delete category");
       }
 
-      toast.success("Category deleted successfully!", {
-        duration: 1000,
-      });
+      toast.success("Category deleted successfully!");
       router.push("/admin/categories");
     } catch (error: any) {
-      toast.error(error.message, {
-        duration: 1000,
-      });
+      toast.error(error.message);
     }
   };
 

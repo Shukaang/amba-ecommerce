@@ -357,7 +357,7 @@ Address: ${formData.address}`;
       </div>
     );
   }
-  const half = orderTotal / 2;
+  const half = total / 2;
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-4 sm:py-8 px-4">
