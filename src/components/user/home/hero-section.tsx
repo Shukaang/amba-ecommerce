@@ -1,5 +1,6 @@
 "use client";
 
+import { notoserif } from "@/fonts/fonts";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -38,16 +39,16 @@ export default function HeroSection() {
       title: "Timeless Elegance",
       subtitle: "Limited Edition",
       description:
-        "Discover pieces that transcend seasons. Crafted for the modern connoisseur.",
+        "We care about quality, bringing you a luxurious collection you'll love.",
       image: "/hero-image.jpg",
       cta: "View Lookbook",
       link: "/products",
     },
     {
-      title: "Ambastore Premium",
+      title: "Amba Premium",
       subtitle: "Premium Editions",
       description:
-        "Discover pieces that transcend seasons. Crafted for the modern connoisseur.",
+        "Place your order today and enjoy delivery within 15 days. Happy shopping",
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
       cta: "View Lookbook",
@@ -140,12 +141,20 @@ export default function HeroSection() {
 
         {/* Content (unchanged) */}
         <div className="relative z-30 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col pt-15">
+          <p className="absolute hidden lg:block z-30 top-10 left-1/3 text-3xl leading-relaxed text-[#ffe9ad]">
+            ለነጋዴዎች በብዛት እናስረክባለን!
+          </p>
+          <p className="absolute lg:hidden sm:block z-30 top-0 left-1/6 text-xl leading-relaxed text-[#ffe9ad]">
+            ለነጋዴዎች በብዛት እናስረክባለን!
+          </p>
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#ffe9ad]/50 backdrop-blur-sm rounded-full border border-white/70 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
               <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-[#f73a00]" />
               {slides[currentSlide].subtitle}
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-3 sm:mb-4 leading-tight">
+            <h1
+              className={`text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-3 sm:mb-4 leading-tight ${notoserif.className}`}
+            >
               {slides[currentSlide].title.split(" ").map((word, i, arr) =>
                 i === arr.length - 1 ? (
                   <span key={i} className="relative">
@@ -182,7 +191,7 @@ export default function HeroSection() {
                 </Button>
               </Link>
             </div>
-            <div className="hidden xs:flex items-center gap-4 sm:gap-6 mt-8 sm:mt-10">
+            <div className="hidden sm:flex items-center gap-4 sm:gap-6 mt-8 sm:mt-10">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#f73a00]" />

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "@/components/products/product-card";
-import { createClient } from "@/lib/supabase/supabaseClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 
 interface Product {
   id: string;
@@ -25,11 +25,16 @@ interface Product {
   }>;
 }
 
+interface ProductsResponse {
+  products: Product[];
+}
+
 interface CategorySectionProps {
   categoryId: string;
   categoryTitle: string;
   descendantIds: string[];
   limit?: number;
+  initialProducts?: Product[];
 }
 
 export default function CategorySection({
@@ -37,41 +42,25 @@ export default function CategorySection({
   categoryTitle,
   descendantIds,
   limit = 4,
+  initialProducts,
 }: CategorySectionProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const idsParam = descendantIds.join(",");
+  const url = `/api/products?category=${idsParam}&limit=${limit}`;
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (descendantIds.length === 0) {
-        setProducts([]);
-        setLoading(false);
-        return;
-      }
+  const { data, error, isLoading } = useSWR<ProductsResponse>(
+    descendantIds.length > 0 ? url : null,
+    fetcher,
+    {
+      fallbackData: initialProducts ? { products: initialProducts } : undefined,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          `
-          *,
-          categories(title)
-        `,
-        )
-        .is("deleted_at", null)
-        .in("category_id", descendantIds)
-        .eq("status", "approved")
-        .order("average_rating", { ascending: false })
-        .limit(limit);
+  const products = data?.products || [];
 
-      if (!error && data) {
-        setProducts(data);
-      }
-      setLoading(false);
-    };
-
-    fetchProducts();
-  }, [descendantIds, limit]);
+  if (descendantIds.length === 0) return null;
+  if (error) return null;
 
   return (
     <section id={`category-${categoryId}`} className="py-8 bg-white">
@@ -89,7 +78,7 @@ export default function CategorySection({
           </Link>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {[...Array(limit)].map((_, i) => (
               <div
@@ -106,7 +95,7 @@ export default function CategorySection({
           </div>
         ) : products.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {products.map((product) => (
+            {products.map((product: Product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

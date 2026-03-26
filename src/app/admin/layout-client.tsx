@@ -24,6 +24,7 @@ export default function AdminLayoutClient({
   return (
     <>
       <AdminSidebar
+        user={user}
         isOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
       />

@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles, TrendingUp, Clock } from "lucide-react";
 import PremiumProductCard from "@/components/products/product-card";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
 
 interface Product {
   id: string;
@@ -25,65 +26,37 @@ interface Product {
   }>;
 }
 
-export default function FeaturedProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ProductsResponse {
+  products: Product[];
+}
+
+interface FeaturedProductsProps {
+  initialProducts: Product[];
+}
+
+export default function FeaturedProducts({
+  initialProducts,
+}: FeaturedProductsProps) {
   const [activeTab, setActiveTab] = useState<"new" | "featured" | "trending">(
     "new",
   );
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
-  const fetchProducts = async (tab: typeof activeTab) => {
-    setLoading(true);
-    try {
-      let url = "/api/products?limit=15";
-      if (tab === "new") url += "&sort=newest";
-      if (tab === "featured") url += "&featured=true";
-      if (tab === "trending") url += "&sort=trending";
+  const url =
+    activeTab === "new"
+      ? "/api/products?limit=15&sort=newest"
+      : activeTab === "trending"
+        ? "/api/products?limit=15&sort=trending"
+        : "/api/products?limit=15&featured=true";
 
-      const response = await fetch(url);
-      const data = await response.json();
-      setProducts(data.products || []);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, error, isLoading } = useSWR<ProductsResponse>(url, fetcher, {
+    fallbackData:
+      activeTab === "new" ? { products: initialProducts } : undefined,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
 
-  useEffect(() => {
-    fetchProducts(activeTab);
-  }, [activeTab]);
-
-  // Real-time subscription
-  useEffect(() => {
-    const supabase = createBrowserSupabaseClient();
-
-    const channel = supabase
-      .channel("featured-products-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "products",
-        },
-        () => {
-          fetchProducts(activeTab);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [activeTab]);
-
-  const tabs = [
-    { id: "new", label: "New Arrivals", icon: Clock },
-    { id: "featured", label: "Featured", icon: Sparkles },
-    { id: "trending", label: "Trending", icon: TrendingUp },
-  ] as const;
+  const products = data?.products || [];
 
   // Scroll active tab into view on mobile when it changes
   useEffect(() => {
@@ -100,6 +73,20 @@ export default function FeaturedProducts() {
       }
     }
   }, [activeTab]);
+
+  const tabs = [
+    { id: "new", label: "New Arrivals", icon: Clock },
+    { id: "featured", label: "Featured", icon: Sparkles },
+    { id: "trending", label: "Trending", icon: TrendingUp },
+  ] as const;
+
+  if (error) {
+    return (
+      <div className="text-center py-12 text-red-500">
+        Failed to load products
+      </div>
+    );
+  }
 
   return (
     <section className="py-8 bg-white">
@@ -150,7 +137,7 @@ export default function FeaturedProducts() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
-          {loading ? (
+          {isLoading ? (
             [...Array(10)].map((_, i) => (
               <div
                 key={i}
@@ -168,7 +155,7 @@ export default function FeaturedProducts() {
               </div>
             ))
           ) : products.length > 0 ? (
-            products.map((product) => (
+            products.map((product: Product) => (
               <PremiumProductCard key={product.id} product={product} />
             ))
           ) : (

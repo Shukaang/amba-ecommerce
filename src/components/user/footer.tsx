@@ -202,13 +202,16 @@ export default function Footer({ categories }: FooterProps) {
                       <div className="font-medium text-slate-900">
                         Customer Support
                       </div>
-                      <div className="text-sm">+251912345678</div>
+                      <Link href="tel:+251975931671">
+                        <div className="text-sm">+251 975 931 671</div>
+                      </Link>
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
                     <Mail className="h-5 w-5 text-[#f73a00] mt-0.5 shrink-0" />
                     <div>
                       <div className="font-medium text-slate-900">Email</div>
+                      <Link href="mailto:support@ambaastore.com"></Link>
                       <div className="text-sm">support@ambaastore.com</div>
                     </div>
                   </li>
@@ -539,56 +542,59 @@ export default function Footer({ categories }: FooterProps) {
             <div className="p-6 overflow-y-auto max-h-[60vh] bg-[#ffe9ad]">
               <div className="prose max-w-none">
                 <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Shipping Information
                 </h3>
                 <p className="text-gray-700 mb-4">
-                  We offer shipping within Ethiopia and internationally. Orders
-                  are processed within 1-2 business days after payment
-                  confirmation. Delivery times vary based on your location.
+                  We offer shipping throughout Ethiopia. All orders are
+                  processed within 1–2 business days following payment
+                  confirmation. Please note that delivery times may vary based
+                  on your specific location.
                 </p>
-                <ul className="text-gray-400 mb-4 list-disc pl-6">
+                <ul className="text-gray-600 mb-4 list-disc pl-6">
                   <li>
-                    <span className="font-medium text-gray-300">
+                    <span className="font-medium text-gray-600">
                       Addis Ababa:
                     </span>{" "}
                     15-21 days (Free)
                   </li>
                   <li>
-                    <span className="font-medium text-gray-300">
+                    <span className="font-medium text-gray-600">
                       Other Ethiopian cities:
                     </span>{" "}
                     21-25 days (Fixed fee)
                   </li>
                 </ul>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Return Policy
                 </h3>
                 <p className="text-gray-700 mb-4">
                   We want you to be completely satisfied with your purchase. If
-                  for any reason you are not, you may return unworn, unwashed
-                  items within 30 days of delivery for a full refund or
-                  exchange.
+                  there is any issue with your order, please report it to us
+                  with a valid reason within 3–6 hours of delivery. You can
+                  reach us via Telegram or Email for a quick resolution.
                 </p>
                 <p className="text-gray-700 mb-4">
-                  To initiate a return, please contact our customer support with
-                  your order number and reason for return. Return shipping costs
-                  are the responsibility of the customer unless the item is
-                  defective or we made an error.
+                  To initiate a return, please contact our customer support team
+                  with your order number and the reason for your request. Please
+                  note that return shipping costs are the responsibility of the
+                  customer, except in cases where the item is defective or an
+                  error was made on our store.
                 </p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Refund Process
                 </h3>
                 <p className="text-gray-700 mb-4">
+                  Once your request has been approved by our customer support
+                  team, the product must be returned within 24 hours. Please
+                  ensure the item is sent back promptly to complete the process.
+                </p>
+                <p className="text-gray-700 mb-4">
                   Once we receive and inspect your return, we will notify you of
                   the approval or rejection of your refund. Approved refunds
-                  will be processed within 5-7 business days to your original
+                  will be processed within 3-5 business days to your original
                   payment method.
                 </p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Exchanges
                 </h3>
@@ -597,7 +603,6 @@ export default function Footer({ categories }: FooterProps) {
                   please return the original item and place a new order. This
                   ensures the fastest processing.
                 </p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Refund Eligibility
                 </h3>
@@ -607,7 +612,6 @@ export default function Footer({ categories }: FooterProps) {
                   unwashed, with all tags attached). Items marked as final sale
                   are not eligible for refund.
                 </p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Partial Refunds
                 </h3>
@@ -615,12 +619,11 @@ export default function Footer({ categories }: FooterProps) {
                   In some cases, only partial refunds are granted (if
                   applicable):
                 </p>
-                <ul className="text-gray-400 mb-4 list-disc pl-6">
+                <ul className="text-gray-600 mb-4 list-disc pl-6">
                   <li>Items with obvious signs of use</li>
                   <li>Any item not in its original condition</li>
                   <li>Any item returned more than 30 days after delivery</li>
                 </ul>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Sale Items
                 </h3>
@@ -628,7 +631,6 @@ export default function Footer({ categories }: FooterProps) {
                   Only regular‑priced items may be refunded. Sale items are
                   non‑refundable unless otherwise stated.
                 </p>
-
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Shipping Costs
                 </h3>

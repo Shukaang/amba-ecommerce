@@ -345,29 +345,6 @@ export default function EditProductPage() {
     }
   };
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/products/${productId}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to delete product");
-      }
-
-      toast.success("Product deleted successfully!");
-      router.push("/admin/products");
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-400">
@@ -718,60 +695,27 @@ export default function EditProductPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3 pt-6">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
                 <Button
                   type="button"
-                  variant="destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="w-full sm:w-auto bg-red-500"
+                  variant="outline"
+                  onClick={() => router.push("/admin/products")}
+                  className="w-full sm:w-auto"
                 >
-                  Delete Product
+                  Cancel
                 </Button>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/admin/products")}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={saving}
-                    className="w-full sm:w-auto"
-                  >
-                    {saving ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full sm:w-auto bg-[#f73a00] hover:bg-[#f73a00]/90"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </CardContent>
           </Card>
         </form>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{product.title}"? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

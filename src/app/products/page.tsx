@@ -100,6 +100,7 @@ export default async function ProductsPage({
     `,
       { count: "exact" },
     )
+    .eq("status", "approved")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 

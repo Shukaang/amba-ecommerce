@@ -1,4 +1,3 @@
-// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -12,6 +11,10 @@ import PageTracker from "@/components/tracking/page-tracker";
 import Footer from "@/components/user/footer";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/supabaseServer";
+import { CategoryProvider } from "@/lib/categories/context";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth/jwt";
+import { createAdminClient } from "@/lib/supabase/supabaseServer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -66,7 +69,7 @@ export default async function RootLayout({
     .select("id, title, parent_id")
     .order("title");
 
-  // Build category tree on the server
+  // Build category tree
   const buildCategoryTree = (
     categories: { id: string; title: string; parent_id: string | null }[],
   ) => {
@@ -95,6 +98,25 @@ export default async function RootLayout({
 
   const categoryTree = categoriesData ? buildCategoryTree(categoriesData) : [];
 
+  // Fetch user on server if logged in
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+  let initialUser = null;
+  if (token) {
+    const decoded = verifyToken(token);
+    if (decoded) {
+      const adminSupabase = await createAdminClient();
+      const { data: userData } = await adminSupabase
+        .from("users")
+        .select(
+          "id, email, name, phone, address, role, status, created_at, updated_at",
+        )
+        .eq("id", decoded.id)
+        .single();
+      initialUser = userData;
+    }
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -107,18 +129,20 @@ export default async function RootLayout({
           <AuthProvider>
             <CartProvider>
               <FavoritesProvider>
-                <PageTracker />
-                <div className="w-full min-h-screen flex flex-col">
-                  <Suspense fallback={<HeaderSkeleton />}>
-                    <UserHeader categories={categoryTree} />
-                  </Suspense>
-                  <main className="flex-1">{children}</main>
-                  <Suspense fallback={<FooterSkeleton />}>
-                    <Footer categories={categoryTree} />
-                  </Suspense>
-                </div>
-                <Toaster position="top-right" duration={2000} />
-                <div id="cart-animation-element" />
+                <CategoryProvider categories={categoryTree}>
+                  <PageTracker />
+                  <div className="w-full min-h-screen flex flex-col">
+                    <Suspense fallback={<HeaderSkeleton />}>
+                      <UserHeader initialUser={initialUser} />
+                    </Suspense>
+                    <main className="flex-1">{children}</main>
+                    <Suspense fallback={<FooterSkeleton />}>
+                      <Footer categories={categoryTree} />
+                    </Suspense>
+                  </div>
+                  <Toaster position="top-right" duration={2000} />
+                  <div id="cart-animation-element" />
+                </CategoryProvider>
               </FavoritesProvider>
             </CartProvider>
           </AuthProvider>

@@ -257,8 +257,8 @@ export const OrderConfirmedEmail = ({
                     support@ambaastore.com
                   </Link>
                   {" • "}
-                  <Link href="tel:+251912345678" style={footerLink}>
-                    +251912345678
+                  <Link href="tel:+251975931671" style={footerLink}>
+                    +251975931671
                   </Link>
                 </Text>
               </Column>

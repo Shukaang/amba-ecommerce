@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils/fetcher";
+import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
@@ -102,10 +104,16 @@ interface RecommendedProduct {
 
 interface ProductDetailClientProps {
   product: Product;
+  initialRatings: Rating[];
+  initialRecommendations: RecommendedProduct[];
+  categoryPath: { id: string; title: string }[];
 }
 
 export default function ProductDetailClient({
   product,
+  initialRatings,
+  initialRecommendations,
+  categoryPath,
 }: ProductDetailClientProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -479,17 +487,24 @@ export default function ProductDetailClient({
           >
             Products
           </Link>
-          {product.categories && (
+
+          {/* Render full category path */}
+          {categoryPath.length > 0 && (
             <>
-              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-              <Link
-                href={`/products?category=${product.categories.id}`}
-                className="hover:text-[#f73a00] whitespace-nowrap transition-colors"
-              >
-                {product.categories.title}
-              </Link>
+              {categoryPath.map((cat, idx) => (
+                <Fragment key={cat.id}>
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                  <Link
+                    href={`/products?category=${cat.id}`}
+                    className="hover:text-[#f73a00] whitespace-nowrap transition-colors"
+                  >
+                    {cat.title}
+                  </Link>
+                </Fragment>
+              ))}
             </>
           )}
+
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
           <span className="text-gray-900 font-medium truncate">
             {product.title}
@@ -947,14 +962,6 @@ export default function ProductDetailClient({
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     {renderStars(userRating.rating, false, "lg")}
-                    {!userRating.moderated && (
-                      <Badge
-                        variant="outline"
-                        className="text-[#f73a00] border-[#f73a00] text-xs"
-                      >
-                        Pending
-                      </Badge>
-                    )}
                   </div>
                   {userRating.review && (
                     <p className="text-sm text-gray-700">{userRating.review}</p>

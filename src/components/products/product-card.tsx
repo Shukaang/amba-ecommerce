@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Star, ShoppingBag, Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +34,7 @@ interface PremiumProductCardProps {
   product: Product;
 }
 
-export default function PremiumProductCard({
-  product,
-}: PremiumProductCardProps) {
+function PremiumProductCard({ product }: PremiumProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -66,7 +65,6 @@ export default function PremiumProductCard({
         </svg>
       </div>
     `;
-
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
 
     const cartLinks = document.querySelectorAll('a[href="/cart"]');
@@ -78,13 +76,9 @@ export default function PremiumProductCard({
         break;
       }
     }
-    let endRect: DOMRect;
-    if (cartIcon) {
-      const r = cartIcon.getBoundingClientRect();
-      endRect = new DOMRect(r.x, r.y, r.width, r.height);
-    } else {
-      endRect = new DOMRect(window.innerWidth - 100, 80, 40, 40);
-    }
+    const endRect: DOMRect = cartIcon
+      ? cartIcon.getBoundingClientRect()
+      : new DOMRect(window.innerWidth - 100, 80, 40, 40);
 
     const startX = startRect.left + startRect.width / 2 - 20;
     const startY = startRect.top + startRect.height / 2 - 20;
@@ -185,10 +179,13 @@ export default function PremiumProductCard({
                 : "opacity-100"
             }`}
           >
-            <img
+            <Image
               src={mainImage}
               alt={product.title}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              className="object-cover"
+              priority={false}
             />
           </div>
           {secondaryImage !== mainImage && (
@@ -197,10 +194,12 @@ export default function PremiumProductCard({
                 isHovered ? "opacity-100" : "opacity-0"
               }`}
             >
-              <img
+              <Image
                 src={secondaryImage}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                className="object-cover"
               />
             </div>
           )}
@@ -302,3 +301,5 @@ export default function PremiumProductCard({
     </Link>
   );
 }
+
+export default memo(PremiumProductCard);

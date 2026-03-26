@@ -9,7 +9,8 @@ import { verifyAuth } from '@/lib/auth/middleware';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('category');
+    const categoryParam = searchParams.get('category');
+    let categoryIds: string[] = [];
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -38,9 +39,11 @@ export async function GET(request: NextRequest) {
       query = query.gte('created_at', twoWeeksAgo.toISOString());
     }
 
-    if (categoryId && !['all', 'men', 'women', 'electronics', 'kids'].includes(categoryId)) {
-      query = query.eq('category_id', categoryId);
-    }
+    if (categoryParam && !['all', 'men', 'women', 'electronics', 'kids'].includes(categoryParam)) {
+  // If it's a single UUID or a comma‑separated list
+    categoryIds = categoryParam.split(',');
+    query = query.in('category_id', categoryIds);
+  }
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
@@ -63,12 +66,19 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({
-      products: products || [],
-      total: count || 0,
-      page,
-      pages: Math.ceil((count || 0) / limit),
-    });
+    return NextResponse.json(
+  {
+    products: products || [],
+    total: count || 0,
+    page,
+    pages: Math.ceil((count || 0) / limit),
+  },
+  {
+    headers: {
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
+    },
+  }
+);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to fetch products' },

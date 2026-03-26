@@ -23,22 +23,18 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface AdminHeaderProps {
-  user?: any; // optional user from server (for initial load)
-  onMenuClick?: () => void; // callback for mobile menu button
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: "ADMIN" | "SUPERADMIN";
+    status: string;
+  };
+  onMenuClick?: () => void;
 }
 
-export default function AdminHeader({
-  user: propUser,
-  onMenuClick,
-}: AdminHeaderProps) {
-  const { user: authUser, logout, loading } = useAuth();
-
-  // Use propUser if provided (from server), otherwise use authUser
-  const user = propUser || authUser;
-
-  const handleLogout = async () => {
-    await logout();
-  };
+export default function AdminHeader({ user, onMenuClick }: AdminHeaderProps) {
+  const { logout } = useAuth();
 
   const getUserInitials = () => {
     if (!user?.name) return "A";
@@ -61,49 +57,9 @@ export default function AdminHeader({
     }
   };
 
-  if (loading) {
-    return (
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            {/* Mobile menu button skeleton */}
-            <button
-              className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-              aria-label="Toggle menu"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-
-            {/* Right section skeleton */}
-            <div className="flex items-center space-x-4 ml-auto">
-              {/* Site button skeleton */}
-              <div className="hidden md:block h-9 w-24 bg-gray-200 rounded-md animate-pulse" />
-
-              {/* Notification skeleton */}
-              <div className="relative p-2">
-                <div className="h-5 w-5 bg-gray-200 rounded-full animate-pulse" />
-                <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-gray-300 ring-2 ring-white animate-pulse" />
-              </div>
-
-              {/* User dropdown skeleton */}
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
-                <div className="hidden lg:flex items-center gap-1">
-                  <div className="text-left">
-                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1" />
-                    <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-gray-200" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-    );
-  }
-
-  if (!user) return null;
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">

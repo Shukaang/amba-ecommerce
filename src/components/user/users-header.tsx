@@ -1,12 +1,14 @@
-// components/user/users-header.tsx
 "use client";
 
+import { merriweather, tagesschrift } from "@/fonts/fonts";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
+import { useUser } from "@/hooks/useUser";
+import { useCategories, Category } from "@/lib/categories/context";
 import {
   Search,
   ShoppingBag,
@@ -21,6 +23,7 @@ import {
   LogIn,
   UserPlus,
   Heart,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +40,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/supabaseClient";
 import { useDebounce } from "@/hooks/useDebounce";
 
-interface Category {
-  id: string;
-  title: string;
-  parent_id: string | null;
-  children?: Category[];
-}
-
 interface SearchProduct {
   id: string;
   title: string;
@@ -53,25 +49,20 @@ interface SearchProduct {
 }
 
 interface UserHeaderProps {
-  categories?: Category[];
+  initialUser?: any;
 }
 
-export default function UserHeader({
-  categories: serverCategories,
-}: UserHeaderProps) {
-  const { user, loading: authLoading, logout } = useAuth();
+export default function UserHeader({ initialUser }: UserHeaderProps) {
+  const { user: authUser, loading: authLoading, logout } = useAuth();
+  const { user, loading: userLoading } = useUser(initialUser);
   const { itemCount, loading: cartLoading } = useCart();
+  const { categories, loading: categoriesLoading } = useCategories();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  // Use server categories if provided, otherwise start with empty array
-  const [categories, setCategories] = useState<Category[]>(
-    serverCategories || [],
-  );
-  const [loadingCategories, setLoadingCategories] = useState(!serverCategories);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchProduct[]>(
     [],
   );
@@ -82,52 +73,10 @@ export default function UserHeader({
 
   // Category dropdown state
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
-  const [activeMainCategory, setActiveMainCategory] = useState<Category | null>(
-    null,
-  );
+  const [activeMainCategory, setActiveMainCategory] = useState<any>(null);
   const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const supabase = createClient();
-
-  // Fetch categories client-side only if not provided from server
-  useEffect(() => {
-    if (!serverCategories) {
-      const fetchCategories = async () => {
-        setLoadingCategories(true);
-        const { data, error } = await supabase
-          .from("categories")
-          .select("id, title, parent_id")
-          .order("title");
-        if (!error && data) {
-          const categoryMap = new Map<string, Category>();
-          const roots: Category[] = [];
-          data.forEach((cat) => {
-            categoryMap.set(cat.id, { ...cat, children: [] });
-          });
-          data.forEach((cat) => {
-            const category = categoryMap.get(cat.id)!;
-            if (cat.parent_id) {
-              const parent = categoryMap.get(cat.parent_id);
-              if (parent) {
-                if (!parent.children) parent.children = [];
-                parent.children.push(category);
-              } else {
-                roots.push(category);
-              }
-            } else {
-              roots.push(category);
-            }
-          });
-          setCategories(roots);
-        }
-        setLoadingCategories(false);
-      };
-      fetchCategories();
-    } else {
-      // If server categories are provided, we're already set
-      setLoadingCategories(false);
-    }
-  }, [serverCategories, supabase]);
 
   // Scroll effect
   useEffect(() => {
@@ -200,10 +149,11 @@ export default function UserHeader({
   };
 
   const getUserInitials = () => {
-    if (!user?.name) return "U";
-    return user.name
+    const currentUser = user || authUser;
+    if (!currentUser?.name) return "U";
+    return currentUser.name
       .split(" ")
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
@@ -231,7 +181,7 @@ export default function UserHeader({
       setActiveMainCategory(null);
     }, 150);
   };
-  const handleMainCategoryHover = (category: Category) => {
+  const handleMainCategoryHover = (category: any) => {
     setActiveMainCategory(category);
   };
   const handleCategoryClick = (categoryId: string) => {
@@ -254,7 +204,7 @@ export default function UserHeader({
   if (pathname.startsWith("/admin")) return null;
 
   // Show loading skeleton while auth is loading
-  if (authLoading) {
+  if (authLoading || userLoading) {
     return (
       <header className="sticky top-0 z-[100] w-full bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -277,6 +227,8 @@ export default function UserHeader({
     );
   }
 
+  const currentUser = user || authUser;
+
   return (
     <>
       <header
@@ -288,9 +240,12 @@ export default function UserHeader({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo + Brand - text hidden on mobile */}
-            <Link href="/" className="flex items-center gap-1 shrink-0">
-              <ShoppingBag className="text-[#f73a00] h-6 w-6" />
+            {/* Logo + Brand */}
+            <Link
+              href="/"
+              className={`flex items-center gap-1 shrink-0 ${tagesschrift.className}`}
+            >
+              <Store className="text-[#f73a00] h-6 w-6" />
               <span className="text-[#f73a00] text-xl font-semibold hidden lg:inline">
                 Amba<span className="text-[#f73a00]">Store</span>
               </span>
@@ -325,7 +280,7 @@ export default function UserHeader({
                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                           All Categories
                         </h4>
-                        {loadingCategories ? (
+                        {categoriesLoading ? (
                           <div className="space-y-2">
                             {[1, 2, 3, 4].map((i) => (
                               <div
@@ -336,7 +291,7 @@ export default function UserHeader({
                           </div>
                         ) : (
                           <ul className="space-y-1">
-                            {(categories || []).map((cat) => (
+                            {categories.map((cat) => (
                               <li
                                 key={cat.id}
                                 onMouseEnter={() =>
@@ -364,23 +319,28 @@ export default function UserHeader({
                       </div>
 
                       {/* Right column – subcategories */}
-                      {activeMainCategory?.children &&
+                      {activeMainCategory &&
+                        activeMainCategory.children &&
                         activeMainCategory.children.length > 0 && (
                           <div className="w-[220px]">
                             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                               {activeMainCategory.title}
                             </h4>
                             <ul className="space-y-1">
-                              {activeMainCategory.children.map((sub) => (
-                                <li key={sub.id}>
-                                  <span
-                                    onClick={() => handleCategoryClick(sub.id)}
-                                    className="block px-2 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-100 hover:text-[#f73a00] transition-colors cursor-pointer"
-                                  >
-                                    {sub.title}
-                                  </span>
-                                </li>
-                              ))}
+                              {activeMainCategory.children.map(
+                                (sub: Category) => (
+                                  <li key={sub.id}>
+                                    <span
+                                      onClick={() =>
+                                        handleCategoryClick(sub.id)
+                                      }
+                                      className="block px-2 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-100 hover:text-[#f73a00] transition-colors cursor-pointer"
+                                    >
+                                      {sub.title}
+                                    </span>
+                                  </li>
+                                ),
+                              )}
                             </ul>
                           </div>
                         )}
@@ -455,9 +415,8 @@ export default function UserHeader({
               )}
             </div>
 
-            {/* Mobile Layout - Search centered, hamburger at end */}
+            {/* Mobile Layout */}
             <div className="flex lg:hidden flex-1 items-center justify-between gap-2">
-              {/* Mobile Search Bar - centered */}
               <div
                 className="flex-1 max-w-[60%] mx-auto relative"
                 ref={mobileSearchRef}
@@ -524,7 +483,7 @@ export default function UserHeader({
                 )}
               </div>
 
-              {/* Cart icon - always visible */}
+              {/* Cart icon */}
               <Link href="/cart" className="relative p-2 group shrink-0">
                 <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
                 {itemCount > 0 && (
@@ -534,7 +493,7 @@ export default function UserHeader({
                 )}
               </Link>
 
-              {/* Hamburger menu - contains auth/user options */}
+              {/* Hamburger menu */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -549,7 +508,7 @@ export default function UserHeader({
               </Button>
             </div>
 
-            {/* Desktop Right side icons - unchanged */}
+            {/* Desktop Right side icons */}
             <div className="hidden lg:flex items-center gap-4 shrink-0">
               <Link href="/cart" className="relative p-2 group">
                 <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
@@ -560,7 +519,7 @@ export default function UserHeader({
                 )}
               </Link>
 
-              {user ? (
+              {currentUser ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -572,7 +531,7 @@ export default function UserHeader({
                           {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
-                      {["ADMIN", "SUPERADMIN"].includes(user.role) && (
+                      {["ADMIN", "SUPERADMIN"].includes(currentUser.role) && (
                         <div className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-green-600 rounded-full border-2 border-white"></div>
                       )}
                     </Button>
@@ -591,17 +550,19 @@ export default function UserHeader({
                           </Avatar>
                           <div className="flex flex-col">
                             <span className="font-semibold text-gray-900">
-                              {user.name}
+                              {currentUser.name}
                             </span>
                             <span className="text-sm text-gray-500 truncate">
-                              {user.email}
+                              {currentUser.email}
                             </span>
                           </div>
                         </div>
                         <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-center ${getRoleColor(user.role)}`}
+                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-center ${getRoleColor(currentUser.role)}`}
                         >
-                          {user.role === "CUSTOMER" ? "CUSTOMER" : user.role}
+                          {currentUser.role === "CUSTOMER"
+                            ? "CUSTOMER"
+                            : currentUser.role}
                         </span>
                       </div>
                     </DropdownMenuLabel>
@@ -637,7 +598,7 @@ export default function UserHeader({
                       </Link>
                     </DropdownMenuItem>
 
-                    {["ADMIN", "SUPERADMIN"].includes(user.role) && (
+                    {["ADMIN", "SUPERADMIN"].includes(currentUser.role) && (
                       <>
                         <DropdownMenuSeparator className="bg-gray-200" />
                         <DropdownMenuItem
@@ -691,14 +652,14 @@ export default function UserHeader({
           </div>
         </div>
 
-        {/* Mobile Menu Drawer - Always in DOM, toggled via classes */}
+        {/* Mobile Menu Drawer */}
         <div
           className={cn(
             "fixed inset-0 z-[9999] lg:hidden",
             mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none",
           )}
         >
-          {/* Overlay with fade */}
+          {/* Overlay */}
           <div
             className={cn(
               "absolute inset-0 bg-black/50 transition-opacity duration-500",
@@ -707,14 +668,13 @@ export default function UserHeader({
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Drawer panel - slides from right */}
+          {/* Drawer panel */}
           <div
             className={cn(
               "absolute top-0 right-0 h-screen w-4/5 max-w-sm bg-white shadow-2xl transform transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-y-auto",
               mobileMenuOpen ? "translate-x-0" : "translate-x-full",
             )}
           >
-            {/* Sticky header with X button on top-left */}
             <div className="sticky top-0 flex justify-start p-4 bg-white border-b border-gray-200 z-10">
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -726,13 +686,13 @@ export default function UserHeader({
             </div>
 
             <div className="p-6 pt-2">
-              {/* All Categories Section */}
+              {/* Categories Section */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-[#00014a] mb-3">
                   Categories
                 </h3>
                 <div className="space-y-2">
-                  {loadingCategories ? (
+                  {categoriesLoading ? (
                     <div className="space-y-2">
                       {[1, 2, 3, 4].map((i) => (
                         <div
@@ -742,7 +702,7 @@ export default function UserHeader({
                       ))}
                     </div>
                   ) : (
-                    (categories || []).map((cat) => (
+                    categories.map((cat) => (
                       <Link
                         key={cat.id}
                         href={`/products?category=${cat.id}`}
@@ -759,10 +719,10 @@ export default function UserHeader({
               {/* Auth / User Section */}
               <div className="border-t border-gray-200 pt-4">
                 <h3 className="text-lg font-semibold text-[#00014a] mb-3">
-                  {user ? "Account" : "Account Access"}
+                  {currentUser ? "Account" : "Account Access"}
                 </h3>
 
-                {user ? (
+                {currentUser ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                       <Avatar className="h-10 w-10">
@@ -771,8 +731,12 @@ export default function UserHeader({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="font-medium text-gray-900">
+                          {currentUser.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {currentUser.email}
+                        </p>
                       </div>
                     </div>
 
@@ -803,7 +767,7 @@ export default function UserHeader({
                       <span>Favorites</span>
                     </Link>
 
-                    {["ADMIN", "SUPERADMIN"].includes(user.role) && (
+                    {["ADMIN", "SUPERADMIN"].includes(currentUser.role) && (
                       <Link
                         href="/admin"
                         className="flex items-center gap-3 py-2 text-[#f73a00] font-medium"
