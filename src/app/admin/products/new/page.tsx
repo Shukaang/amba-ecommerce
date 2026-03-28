@@ -47,9 +47,11 @@ export default function NewProductPage() {
     price: "",
   });
 
-  // Colors and sizes
+  // Colors and sizes – now optional, prices optional for sizes
   const [colors, setColors] = useState<string[]>([]);
-  const [sizes, setSizes] = useState<{ name: string; price: number }[]>([]);
+  const [sizes, setSizes] = useState<{ name: string; price: number | null }[]>(
+    [],
+  );
 
   // Images
   const [mainImage, setMainImage] = useState<File | null>(null);
@@ -111,7 +113,7 @@ export default function NewProductPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Image handlers
+  // Image handlers (unchanged)
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,8 +169,8 @@ export default function NewProductPage() {
     setColors(newColors);
   };
 
-  // Sizes handlers
-  const addSize = () => setSizes([...sizes, { name: "", price: 0 }]);
+  // Sizes handlers – price is now optional
+  const addSize = () => setSizes([...sizes, { name: "", price: null }]);
   const removeSize = (index: number) =>
     setSizes(sizes.filter((_, i) => i !== index));
   const updateSizeName = (index: number, value: string) => {
@@ -176,9 +178,10 @@ export default function NewProductPage() {
     newSizes[index].name = value;
     setSizes(newSizes);
   };
-  const updateSizePrice = (index: number, value: number) => {
+  const updateSizePrice = (index: number, value: string) => {
     const newSizes = [...sizes];
-    newSizes[index].price = value;
+    const price = value === "" ? null : parseFloat(value);
+    newSizes[index].price = price;
     setSizes(newSizes);
   };
 
@@ -187,19 +190,21 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
-      // Validate colors and sizes
-      if (colors.length === 0 || sizes.length === 0) {
-        toast.error("Please add at least one color and one size");
+      // Validate only required fields
+      if (!formData.title || !formData.description || !formData.price) {
+        toast.error("Please fill in all required fields");
         setLoading(false);
         return;
       }
-      if (colors.some((c) => !c.trim())) {
+      // Validate colors: if any, each must be non‑empty
+      if (colors.some((c) => c.trim() === "")) {
         toast.error("All colors must have a value");
         setLoading(false);
         return;
       }
-      if (sizes.some((s) => !s.name.trim() || s.price <= 0)) {
-        toast.error("All sizes must have a name and positive price");
+      // Validate sizes: each must have a name
+      if (sizes.some((s) => !s.name.trim())) {
+        toast.error("All sizes must have a name");
         setLoading(false);
         return;
       }
@@ -212,6 +217,7 @@ export default function NewProductPage() {
       formDataToSend.append("category_id", formData.category_id || "null");
       formDataToSend.append("price", formData.price);
       formDataToSend.append("colors", JSON.stringify(colors));
+      // Send sizes as they are – price can be null
       formDataToSend.append("sizes", JSON.stringify(sizes));
 
       if (mainImage) formDataToSend.append("images", mainImage);
@@ -368,15 +374,20 @@ export default function NewProductPage() {
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  This is the base price; individual sizes will have their own
-                  prices.
+                  This is the base price; individual sizes will use this if
+                  their price is left empty.
                 </p>
               </div>
             </div>
 
-            {/* Colors Section */}
+            {/* Colors Section – optional */}
             <div className="space-y-4 border rounded-lg p-4">
-              <h3 className="text-lg font-medium text-gray-900">Colors</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                Colors{" "}
+                <span className="text-sm font-normal text-gray-500">
+                  (optional)
+                </span>
+              </h3>
               <div className="space-y-2">
                 {colors.map((color, index) => (
                   <div key={index} className="flex gap-2 items-center">
@@ -411,10 +422,13 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            {/* Sizes Section */}
+            {/* Sizes Section – optional, price optional */}
             <div className="space-y-4 border rounded-lg p-4">
               <h3 className="text-lg font-medium text-gray-900">
-                Sizes & Prices
+                Sizes & Prices{" "}
+                <span className="text-sm font-normal text-gray-500">
+                  (optional)
+                </span>
               </h3>
               <div className="space-y-2">
                 {sizes.map((size, index) => (
@@ -428,12 +442,10 @@ export default function NewProductPage() {
                     <Input
                       type="number"
                       step="0.01"
-                      value={size.price}
-                      onChange={(e) =>
-                        updateSizePrice(index, parseFloat(e.target.value))
-                      }
-                      placeholder="Price"
-                      className="w-24 text-gray-900"
+                      value={size.price === null ? "" : size.price}
+                      onChange={(e) => updateSizePrice(index, e.target.value)}
+                      placeholder="Leave empty to use base price"
+                      className="w-32 text-gray-900"
                     />
                     <Button
                       type="button"
@@ -455,12 +467,13 @@ export default function NewProductPage() {
                   <Plus className="h-4 w-4 mr-2" /> Add Size
                 </Button>
                 <p className="text-xs text-gray-500">
-                  Add each size with its price (e.g., S: 100, M: 150)
+                  Add each size with its price. Leave price empty to use the
+                  base price.
                 </p>
               </div>
             </div>
 
-            {/* Product Images */}
+            {/* Product Images – unchanged */}
             <div className="space-y-6">
               <h3 className="text-lg font-medium text-gray-900">
                 Product Images

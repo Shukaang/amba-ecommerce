@@ -239,7 +239,8 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+          {/* Desktop layout (unchanged) */}
+          <div className="hidden lg:flex justify-between items-center h-20">
             {/* Logo + Brand */}
             <Link
               href="/"
@@ -253,7 +254,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
 
             {/* Desktop Search Bar */}
             <div
-              className="hidden lg:flex flex-1 max-w-2xl mx-4 relative"
+              className="flex-1 max-w-2xl mx-4 relative"
               ref={desktopSearchRef}
             >
               <div className="flex w-full items-center bg-white border border-gray-200 rounded-full shadow-sm">
@@ -415,101 +416,8 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               )}
             </div>
 
-            {/* Mobile Layout */}
-            <div className="flex lg:hidden flex-1 items-center justify-between gap-2">
-              <div
-                className="flex-1 max-w-[60%] mx-auto relative"
-                ref={mobileSearchRef}
-              >
-                <form onSubmit={handleSearch} className="w-full">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Search..."
-                      className="pl-9 pr-4 py-2 w-full rounded-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => {
-                        if (
-                          searchSuggestions.length > 0 ||
-                          debouncedSearch.trim() !== ""
-                        )
-                          setShowSuggestions(true);
-                      }}
-                    />
-                  </div>
-                </form>
-
-                {/* Mobile Search Suggestions */}
-                {showSuggestions && debouncedSearch.trim() !== "" && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[9999] max-h-60 overflow-y-auto">
-                    {searchSuggestions.length > 0 ? (
-                      searchSuggestions.map((product) => (
-                        <div
-                          key={product.id}
-                          onClick={() => handleSuggestionClick(product.slug)}
-                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
-                        >
-                          <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
-                            {product.images?.[0] ? (
-                              <img
-                                src={product.images[0]}
-                                alt={product.title}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center text-gray-400">
-                                📦
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">
-                              {product.title}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ETB {product.price.toLocaleString()}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-4 text-center text-gray-500">
-                        No products found
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Cart icon */}
-              <Link href="/cart" className="relative p-2 group shrink-0">
-                <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
-                {itemCount > 0 && (
-                  <Badge className="text-white absolute -top-1 -right-1 h-5 w-5 min-w-0 p-0 flex items-center justify-center rounded-full bg-[#00014a] hover:bg-[#00014a]/90">
-                    {itemCount > 9 ? "9+" : itemCount}
-                  </Badge>
-                )}
-              </Link>
-
-              {/* Hamburger menu */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-[#00014a] hover:bg-gray-100"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-              </Button>
-            </div>
-
             {/* Desktop Right side icons */}
-            <div className="hidden lg:flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-4 shrink-0">
               <Link href="/cart" className="relative p-2 group">
                 <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
                 {itemCount > 0 && (
@@ -631,9 +539,9 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
                 <div className="flex items-center gap-2">
                   <Link href="/login">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="text-[#00014a] hover:text-[#f73a00] hover:bg-gray-100"
+                      className="border-[#f73a00] text-[#f73a00] hover:bg-[#f73a00] hover:text-white transition-all"
                     >
                       Sign In
                     </Button>
@@ -641,7 +549,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
                   <Link href="/register">
                     <Button
                       size="sm"
-                      className="bg-[#f73a00] hover:bg-[#f73a00]/90 text-white"
+                      className="bg-gradient-to-r from-[#f73a00] to-[#ff6b2c] text-white shadow-md hover:shadow-lg transition-all"
                     >
                       Sign Up
                     </Button>
@@ -650,9 +558,115 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               )}
             </div>
           </div>
+
+          {/* Mobile layout - restructured */}
+          <div className="lg:hidden">
+            {/* Top row: Logo + Cart + Hamburger */}
+            <div className="flex justify-between items-center h-20">
+              <Link
+                href="/"
+                className={`flex items-center gap-1 shrink-0 ${tagesschrift.className}`}
+              >
+                <Store className="text-[#f73a00] h-6 w-6" />
+                <span className="text-[#f73a00] text-xl font-semibold">
+                  Amba<span className="text-[#f73a00]">Store</span>
+                </span>
+              </Link>
+
+              <div className="flex items-center gap-2">
+                <Link href="/cart" className="relative p-2 group">
+                  <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
+                  {itemCount > 0 && (
+                    <Badge className="text-white absolute -top-1 -right-1 h-5 w-5 min-w-0 p-0 flex items-center justify-center rounded-full bg-[#00014a] hover:bg-[#00014a]/90">
+                      {itemCount > 9 ? "9+" : itemCount}
+                    </Badge>
+                  )}
+                </Link>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-[#00014a] hover:bg-gray-100"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                >
+                  {mobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <Menu className="h-6 w-6" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Separate search section with distinct background and border */}
+            <div className="w-full border-t border-gray-200">
+              <div className="py-3" ref={mobileSearchRef}>
+                <form onSubmit={handleSearch} className="w-full">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search products..."
+                      className="pl-9 pr-4 py-2 w-full rounded-full bg-[#ffe9ad]/50 border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => {
+                        if (
+                          searchSuggestions.length > 0 ||
+                          debouncedSearch.trim() !== ""
+                        )
+                          setShowSuggestions(true);
+                      }}
+                    />
+                  </div>
+                </form>
+
+                {/* Mobile Search Suggestions */}
+                {showSuggestions && debouncedSearch.trim() !== "" && (
+                  <div className="absolute left-0 right-0 mt-2 mx-4 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[9999] max-h-60 overflow-y-auto">
+                    {searchSuggestions.length > 0 ? (
+                      searchSuggestions.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => handleSuggestionClick(product.slug)}
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
+                        >
+                          <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden shrink-0">
+                            {product.images?.[0] ? (
+                              <img
+                                src={product.images[0]}
+                                alt={product.title}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-gray-400">
+                                📦
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {product.title}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ETB {product.price.toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-4 text-center text-gray-500">
+                        No products found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Mobile Menu Drawer */}
+        {/* Mobile Menu Drawer (unchanged) */}
         <div
           className={cn(
             "fixed inset-0 z-[9999] lg:hidden",

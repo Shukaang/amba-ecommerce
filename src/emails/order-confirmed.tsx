@@ -227,7 +227,9 @@ export const OrderConfirmedEmail = ({
                 <Text style={summaryLabel}>Payment</Text>
               </Column>
               <Column align="right">
-                <Text style={summaryValue}>Pay 50% now, 50% on Delivery</Text>
+                <Text style={summaryValue}>
+                  You paid 50%, Pay 50% on Delivery
+                </Text>
               </Column>
             </Row>
             <Hr style={divider} />

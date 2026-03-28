@@ -115,6 +115,7 @@ async function createProduct(request: NextRequest) {
 
     const slug = await generateUniqueSlug(title, supabase);
 
+    // Insert product with colors and sizes (which may be empty arrays)
     const { data: product, error: productError } = await supabase
       .from('products')
       .insert({
@@ -136,7 +137,7 @@ async function createProduct(request: NextRequest) {
 
     if (productError) throw productError;
 
-    // Upload images
+    // Upload images (only if any)
     const imageUrls: string[] = [];
     for (const file of imageFiles) {
       try {
@@ -147,27 +148,30 @@ async function createProduct(request: NextRequest) {
       }
     }
 
-    const { error: updateError } = await supabase
-      .from('products')
-      .update({ images: imageUrls })
-      .eq('id', product.id);
+    if (imageUrls.length > 0) {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ images: imageUrls })
+        .eq('id', product.id);
+      if (updateError) throw updateError;
+    }
 
-    if (updateError) throw updateError;
-
-    // Generate variants from colors and sizes
-    const colors = JSON.parse(colorsJson || '[]');
-    const sizes = JSON.parse(sizesJson || '[]');
+    // Generate variants from colors and sizes (optional)
+    const colors = colorsJson ? JSON.parse(colorsJson) : [];
+    const sizes = sizesJson ? JSON.parse(sizesJson) : [];
     const variants = [];
 
     for (const color of colors) {
       for (const size of sizes) {
         if (color.trim() && size.name.trim()) {
+          // Use size price if provided and > 0, otherwise fallback to base price
+          const sizePrice = (size.price && size.price > 0) ? size.price : product.price;
           variants.push({
             product_id: product.id,
             color: color.trim(),
             size: size.name.trim(),
             unit: null,
-            price: size.price,
+            price: sizePrice,
           });
         }
       }

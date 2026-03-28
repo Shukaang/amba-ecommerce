@@ -678,6 +678,9 @@ export default function ProductDetailClient({
                       (v) => v.color === selectedColor && v.size === size.name,
                     );
                     if (!variant) return null;
+                    // Use size.price if it's a number > 0, otherwise use product.price
+                    const displayPrice =
+                      size.price && size.price > 0 ? size.price : product.price;
                     return (
                       <button
                         key={size.name}
@@ -690,7 +693,7 @@ export default function ProductDetailClient({
                       >
                         <div className="font-medium">{size.name}</div>
                         <div className="text-sm">
-                          Br {size.price.toLocaleString("en-US")}
+                          Br {displayPrice.toLocaleString("en-US")}
                         </div>
                       </button>
                     );

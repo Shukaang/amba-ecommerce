@@ -82,10 +82,12 @@ async function updateProduct(
 
     const supabase = await createAdminClient();
 
+    // Delete images marked for removal
     for (const url of imagesToDelete) {
       await deleteProductImage(url);
     }
 
+    // Upload new images
     const newImageUrls: string[] = [];
     for (const file of newImageFiles) {
       try {
@@ -98,6 +100,7 @@ async function updateProduct(
 
     const finalImages = [...existingImages, ...newImageUrls];
 
+    // Update product record
     const { error: productError } = await supabase
       .from('products')
       .update({
@@ -119,20 +122,21 @@ async function updateProduct(
     // Delete old variants
     await supabase.from('product_variants').delete().eq('product_id', id);
 
-    // Generate new variants
-    const colors = JSON.parse(colorsJson || '[]');
-    const sizes = JSON.parse(sizesJson || '[]');
+    // Generate new variants with price fallback
+    const colors = colorsJson ? JSON.parse(colorsJson) : [];
+    const sizes = sizesJson ? JSON.parse(sizesJson) : [];
     const variants = [];
 
     for (const color of colors) {
       for (const size of sizes) {
         if (color.trim() && size.name.trim()) {
+          const sizePrice = (size.price && size.price > 0) ? size.price : price;
           variants.push({
             product_id: id,
             color: color.trim(),
             size: size.name.trim(),
             unit: null,
-            price: size.price,
+            price: sizePrice,
           });
         }
       }

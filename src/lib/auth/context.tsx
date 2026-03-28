@@ -86,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     redirectTo?: string,
   ) => {
     try {
-      console.log("Attempting login for:", email);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await res.json();
-      console.log("Login response:", { status: res.status, data });
 
       if (!res.ok) {
         throw new Error(data.error || "Login failed");

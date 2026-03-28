@@ -27,7 +27,7 @@ export default function HeroSection() {
   const slides = [
     {
       title: "Amba Premium",
-      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
+      subtitle: "ትዕዛዞን በ15 ቀን ውስጥ ይረከቡ!",
       description:
         "Place your order today and enjoy delivery within 15 days. Happy shopping",
       image:
@@ -37,7 +37,7 @@ export default function HeroSection() {
     },
     {
       title: "በብዛት ለሚረከቡ ልዩ ቅናሽ እናደርጋለን",
-      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
+      subtitle: "ትዕዛዞን በ15 ቀን ውስጥ ይረከቡ!",
       description:
         "በብዛት ለሚረከቡን ደንበኞቻችን በልዩ ቅናሽ እና ፍጥነት የምናቀርብ መሆኑን በደስታ እንገልፃለን!",
       image: "/hero-image.jpg",
@@ -45,14 +45,14 @@ export default function HeroSection() {
       link: "tel:251975931671",
     },
     {
-      title: "New Season Collection",
-      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
+      title: "Timeless Elegance",
+      subtitle: "ትዕዛዞን በ15 ቀን ውስጥ ይረከቡ!",
       description:
-        "Place your order today and enjoy delivery within 15 days. Happy shopping",
+        "Discover pieces that transcend seasons. Crafted for the modern connoisseur.",
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
-      cta: "Shop Collection",
-      link: "/products?new=true",
+      cta: "View Lookbook",
+      link: "/products",
     },
   ];
 

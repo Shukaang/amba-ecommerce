@@ -20,16 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Loader2, Package, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,7 +38,7 @@ interface Product {
   price: number;
   images: string[];
   colors: string[];
-  sizes: Array<{ name: string; price: number }>;
+  sizes: Array<{ name: string; price: number | null }>;
 }
 
 export default function EditProductPage() {
@@ -71,11 +61,13 @@ export default function EditProductPage() {
     price: "",
   });
 
-  // Colors and sizes
+  // Colors and sizes – optional
   const [colors, setColors] = useState<string[]>([]);
-  const [sizes, setSizes] = useState<{ name: string; price: number }[]>([]);
+  const [sizes, setSizes] = useState<{ name: string; price: number | null }[]>(
+    [],
+  );
 
-  // Delete modal
+  // Delete modal (unchanged)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -83,17 +75,14 @@ export default function EditProductPage() {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const [mainExisting, setMainExisting] = useState<string | null>(null);
-
   const [secondaryImage, setSecondaryImage] = useState<File | null>(null);
   const [secondaryPreview, setSecondaryPreview] = useState<string | null>(null);
   const [secondaryExisting, setSecondaryExisting] = useState<string | null>(
     null,
   );
-
   const [additionalImages, setAdditionalImages] = useState<File[]>([]);
   const [additionalPreviews, setAdditionalPreviews] = useState<string[]>([]);
   const [additionalExisting, setAdditionalExisting] = useState<string[]>([]);
-
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
 
   useEffect(() => {
@@ -181,7 +170,7 @@ export default function EditProductPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Image handlers
+  // Image handlers (unchanged)
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -264,8 +253,8 @@ export default function EditProductPage() {
     setColors(newColors);
   };
 
-  // Sizes handlers
-  const addSize = () => setSizes([...sizes, { name: "", price: 0 }]);
+  // Sizes handlers – price optional
+  const addSize = () => setSizes([...sizes, { name: "", price: null }]);
   const removeSize = (index: number) =>
     setSizes(sizes.filter((_, i) => i !== index));
   const updateSizeName = (index: number, value: string) => {
@@ -273,9 +262,10 @@ export default function EditProductPage() {
     newSizes[index].name = value;
     setSizes(newSizes);
   };
-  const updateSizePrice = (index: number, value: number) => {
+  const updateSizePrice = (index: number, value: string) => {
     const newSizes = [...sizes];
-    newSizes[index].price = value;
+    const price = value === "" ? null : parseFloat(value);
+    newSizes[index].price = price;
     setSizes(newSizes);
   };
 
@@ -284,19 +274,19 @@ export default function EditProductPage() {
     setSaving(true);
 
     try {
-      // Validate
-      if (colors.length === 0 || sizes.length === 0) {
-        toast.error("Please add at least one color and one size");
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.price) {
+        toast.error("Please fill in all required fields");
         setSaving(false);
         return;
       }
-      if (colors.some((c) => !c.trim())) {
+      if (colors.some((c) => c.trim() === "")) {
         toast.error("All colors must have a value");
         setSaving(false);
         return;
       }
-      if (sizes.some((s) => !s.name.trim() || s.price <= 0)) {
-        toast.error("All sizes must have a name and positive price");
+      if (sizes.some((s) => !s.name.trim())) {
+        toast.error("All sizes must have a name");
         setSaving(false);
         return;
       }
@@ -469,15 +459,20 @@ export default function EditProductPage() {
                     required
                   />
                   <p className="text-xs text-gray-500">
-                    This is the base price; individual sizes have their own
-                    prices.
+                    This is the base price; individual sizes will use this if
+                    their price is left empty.
                   </p>
                 </div>
               </div>
 
-              {/* Colors Section */}
+              {/* Colors Section – optional */}
               <div className="space-y-4 border rounded-lg p-4">
-                <h3 className="text-lg font-medium text-gray-900">Colors</h3>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Colors{" "}
+                  <span className="text-sm font-normal text-gray-500">
+                    (optional)
+                  </span>
+                </h3>
                 <div className="space-y-2">
                   {colors.map((color, index) => (
                     <div key={index} className="flex gap-2 items-center">
@@ -509,10 +504,13 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              {/* Sizes Section */}
+              {/* Sizes Section – optional, price optional */}
               <div className="space-y-4 border rounded-lg p-4">
                 <h3 className="text-lg font-medium text-gray-900">
-                  Sizes & Prices
+                  Sizes & Prices{" "}
+                  <span className="text-sm font-normal text-gray-500">
+                    (optional)
+                  </span>
                 </h3>
                 <div className="space-y-2">
                   {sizes.map((size, index) => (
@@ -526,12 +524,10 @@ export default function EditProductPage() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={size.price}
-                        onChange={(e) =>
-                          updateSizePrice(index, parseFloat(e.target.value))
-                        }
-                        placeholder="Price"
-                        className="w-24 text-gray-900"
+                        value={size.price === null ? "" : size.price}
+                        onChange={(e) => updateSizePrice(index, e.target.value)}
+                        placeholder="Leave empty to use base price"
+                        className="w-32 text-gray-900"
                       />
                       <Button
                         type="button"
@@ -555,7 +551,7 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              {/* Images – same as before */}
+              {/* Images section (unchanged) – same as before */}
               <div className="space-y-6">
                 <h3 className="text-lg font-medium text-gray-900">
                   Product Images
@@ -694,7 +690,7 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons (unchanged) */}
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
                 <Button
                   type="button"
