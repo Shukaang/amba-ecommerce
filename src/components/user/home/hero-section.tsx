@@ -26,33 +26,33 @@ export default function HeroSection() {
 
   const slides = [
     {
-      title: "New Season Collection",
-      subtitle: "2026 Premiere",
+      title: "Amba Premium",
+      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
       description:
-        "Elevate your wardrobe with our latest curated arrivals. Minimalist designs meeting maximum craftsmanship.",
+        "Place your order today and enjoy delivery within 15 days. Happy shopping",
       image:
         "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop",
-      cta: "Shop Collection",
-      link: "/products?new=true",
-    },
-    {
-      title: "Timeless Elegance",
-      subtitle: "Limited Edition",
-      description:
-        "We care about quality, bringing you a luxurious collection you'll love.",
-      image: "/hero-image.jpg",
       cta: "View Lookbook",
       link: "/products",
     },
     {
-      title: "Amba Premium",
-      subtitle: "Premium Editions",
+      title: "በብዛት ለሚረከቡ ልዩ ቅናሽ እናደርጋለን",
+      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
+      description:
+        "በብዛት ለሚረከቡን ደንበኞቻችን በልዩ ቅናሽ እና ፍጥነት የምናቀርብ መሆኑን በደስታ እንገልፃለን!",
+      image: "/hero-image.jpg",
+      cta: "ያናግሩን",
+      link: "tel:251975931671",
+    },
+    {
+      title: "New Season Collection",
+      subtitle: "ማንኛውንም ትዕዛዝ በ15 ቀን ብቻ! በታማኝነት በፍጥነት ይረከቡ!",
       description:
         "Place your order today and enjoy delivery within 15 days. Happy shopping",
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
-      cta: "View Lookbook",
-      link: "/products",
+      cta: "Shop Collection",
+      link: "/products?new=true",
     },
   ];
 
@@ -141,15 +141,8 @@ export default function HeroSection() {
 
         {/* Content (unchanged) */}
         <div className="relative z-30 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col pt-15">
-          <p className="absolute hidden lg:block z-30 top-10 left-1/3 text-3xl leading-relaxed text-[#ffe9ad]">
-            ለነጋዴዎች በብዛት እናስረክባለን!
-          </p>
-          <p className="absolute lg:hidden sm:block z-30 top-0 left-1/6 text-xl leading-relaxed text-[#ffe9ad]">
-            ለነጋዴዎች በብዛት እናስረክባለን!
-          </p>
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#ffe9ad]/50 backdrop-blur-sm rounded-full border border-white/70 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
-              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-[#f73a00]" />
               {slides[currentSlide].subtitle}
             </div>
             <h1

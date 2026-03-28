@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Edit,
   Trash2,
@@ -61,7 +61,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
 
   const supabase = createClient();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("users")
@@ -69,27 +69,32 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      if (data) {
+        setUsers(data);
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to fetch users");
     }
-  };
+  }, [supabase]);
 
+  // Real-time subscription
   useEffect(() => {
     const channel = supabase
       .channel("users-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "users" },
-        fetchUsers,
+        () => {
+          fetchUsers();
+        },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [supabase, fetchUsers]);
 
   const isSuperAdmin = currentUser?.role === "SUPERADMIN";
   const isAdmin = currentUser?.role === "ADMIN" || isSuperAdmin;
@@ -201,7 +206,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
       toast.success("User updated successfully");
       setEditingUser(null);
       setEditData(null);
-      await fetchUsers();
+      await fetchUsers(); // Refresh the list
     } catch (error: any) {
       toast.error(error.message || "Failed to update user");
     } finally {
@@ -216,10 +221,11 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   const confirmDelete = async () => {
     if (!deleteDialog || !isSuperAdmin) return;
 
-    setLoading(`delete-${deleteDialog.id}`);
+    const userId = deleteDialog.id;
+    setLoading(`delete-${userId}`);
 
     try {
-      const res = await fetch(`/api/admin/users/${deleteDialog.id}`, {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
       });
 
@@ -230,12 +236,12 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
       }
 
       toast.success("User deleted successfully");
-      await fetchUsers();
+      setDeleteDialog(null);
+      await fetchUsers(); // Refresh the list
     } catch (error: any) {
       toast.error(error.message || "Failed to delete user");
     } finally {
       setLoading(null);
-      setDeleteDialog(null);
     }
   };
 

@@ -274,7 +274,9 @@ export default function Footer({ categories }: FooterProps) {
             </div>
             <div className="p-6 overflow-y-auto max-h-[60vh] bg-[#ffe9ad]">
               <div className="prose max-w-none">
-                <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+                <p className="text-gray-600 mb-6">
+                  Effective Date: Jan {currentYear}
+                </p>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Information We Collect
                 </h3>
@@ -363,7 +365,9 @@ export default function Footer({ categories }: FooterProps) {
             </div>
             <div className="p-6 overflow-y-auto max-h-[60vh] bg-[#ffe9ad]">
               <div className="prose max-w-none">
-                <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+                <p className="text-gray-600 mb-6">
+                  Effective Date: Jan {currentYear}
+                </p>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Acceptance of Terms
                 </h3>
@@ -458,7 +462,9 @@ export default function Footer({ categories }: FooterProps) {
             </div>
             <div className="p-6 bg-[#ffe9ad] overflow-y-auto max-h-[60vh]">
               <div className="prose max-w-none">
-                <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+                <p className="text-gray-600 mb-6">
+                  Effective Date: Jan {currentYear}
+                </p>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   What Are Cookies
                 </h3>
@@ -541,7 +547,9 @@ export default function Footer({ categories }: FooterProps) {
             </div>
             <div className="p-6 overflow-y-auto max-h-[60vh] bg-[#ffe9ad]">
               <div className="prose max-w-none">
-                <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+                <p className="text-gray-600 mb-6">
+                  Effective Date: Jan {currentYear}
+                </p>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Shipping Information
                 </h3>
@@ -595,42 +603,14 @@ export default function Footer({ categories }: FooterProps) {
                   will be processed within 3-5 business days to your original
                   payment method.
                 </p>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Exchanges
-                </h3>
+
                 <p className="text-gray-700 mb-4">
-                  If you need to exchange an item for a different size or color,
-                  please return the original item and place a new order. This
-                  ensures the fastest processing.
-                </p>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Refund Eligibility
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  To be eligible for a refund, items must be returned within 30
-                  days of delivery, in their original condition (unworn,
+                  To be eligible for a refund, items must be returned within 24
+                  hours of delivery, in their original condition (unworn,
                   unwashed, with all tags attached). Items marked as final sale
                   are not eligible for refund.
                 </p>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Partial Refunds
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  In some cases, only partial refunds are granted (if
-                  applicable):
-                </p>
-                <ul className="text-gray-600 mb-4 list-disc pl-6">
-                  <li>Items with obvious signs of use</li>
-                  <li>Any item not in its original condition</li>
-                  <li>Any item returned more than 30 days after delivery</li>
-                </ul>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Sale Items
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  Only regular‑priced items may be refunded. Sale items are
-                  non‑refundable unless otherwise stated.
-                </p>
+
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Shipping Costs
                 </h3>
