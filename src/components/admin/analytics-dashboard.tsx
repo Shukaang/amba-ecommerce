@@ -107,10 +107,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
     const currentUsers = filterByDate(data.users, currentStart).filter(
       (user) => user.role === "CUSTOMER",
     ).length;
-    const currentVisitors = filterByDate(
-      data.visitorStats,
-      currentStart,
-    ).length;
 
     // Previous period
     const prevOrders = filterByDate(data.orders, previousStart, previousEnd);
@@ -126,11 +122,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
       previousStart,
       previousEnd,
     ).filter((user) => user.role === "CUSTOMER").length;
-    const prevVisitors = filterByDate(
-      data.visitorStats,
-      previousStart,
-      previousEnd,
-    ).length;
 
     // All-time totals
     const totalCustomers = data.users.filter(
@@ -465,97 +456,6 @@ export default function AnalyticsDashboard({ data }: AnalyticsDashboardProps) {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Product Stats */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center mb-4">
-            <Package className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Product Statistics
-            </h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Total Products</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.totalProducts)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Avg. Rating</span>
-              <span className="text-sm font-medium text-gray-900">
-                {metrics.avgProductRating.toFixed(1)}/5.0
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Categories</span>
-              <span className="text-sm font-medium text-gray-900">12</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Visitor Stats */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center mb-4">
-            <Eye className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Visitor Insights
-            </h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Total Visitors</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.totalVisitors)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Page Views</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.totalPageViews)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Product Clicks</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.totalProductClicks)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Conversion Stats */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center mb-4">
-            <ShoppingCart className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Conversion Metrics
-            </h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Conversion Rate</span>
-              <span className="text-sm font-medium text-gray-900">
-                {metrics.conversionRate.toFixed(1)}%
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Completed Orders</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.completedOrders)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Pending Orders</span>
-              <span className="text-sm font-medium text-gray-900">
-                {formatNumber(metrics.pendingOrders)}
-              </span>
-            </div>
           </div>
         </div>
       </div>
