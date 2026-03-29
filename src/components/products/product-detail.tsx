@@ -10,15 +10,12 @@ import { useCart } from "@/lib/cart/context";
 import {
   Star,
   ShoppingCart,
-  Check,
   Heart,
   Share2,
   ChevronRight,
   Clock,
   Edit2,
   Trash2,
-  Users,
-  Shield,
   Truck,
   RotateCcw,
   Loader2,
@@ -27,7 +24,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -666,23 +666,29 @@ export default function ProductsTable({
                                 Sizes & Prices
                               </h4>
                               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                {product.sizes.map((size) => (
-                                  <div
-                                    key={size.name}
-                                    className="bg-white p-2 rounded border border-gray-200 text-xs"
-                                  >
-                                    <div className="font-medium text-gray-900">
-                                      {size.name}
+                                {product.sizes.map((size) => {
+                                  // Use size.price if it's a number > 0, otherwise use product.price
+                                  const displayPrice =
+                                    size.price && size.price > 0
+                                      ? size.price
+                                      : product.price;
+                                  return (
+                                    <div
+                                      key={size.name}
+                                      className="bg-white p-2 rounded border border-gray-200 text-xs"
+                                    >
+                                      <div className="font-medium text-gray-900">
+                                        {size.name}
+                                      </div>
+                                      <div className="text-gray-600 mt-1">
+                                        Br {displayPrice.toLocaleString()}
+                                      </div>
                                     </div>
-                                    <div className="text-gray-600 mt-1">
-                                      Br {size.price.toLocaleString()}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
-
                           {/* Created / Updated info (unchanged) */}
                           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
                             <div>
