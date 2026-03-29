@@ -7,7 +7,6 @@ import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
-import { useUser } from "@/hooks/useUser";
 import { useCategories, Category } from "@/lib/categories/context";
 import {
   Search,
@@ -53,8 +52,7 @@ interface UserHeaderProps {
 }
 
 export default function UserHeader({ initialUser }: UserHeaderProps) {
-  const { user: authUser, loading: authLoading, logout } = useAuth();
-  const { user, loading: userLoading } = useUser(initialUser);
+  const { user, loading: authLoading, logout } = useAuth(); // Use only useAuth
   const { itemCount, loading: cartLoading } = useCart();
   const { categories, loading: categoriesLoading } = useCategories();
   const pathname = usePathname();
@@ -149,9 +147,8 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
   };
 
   const getUserInitials = () => {
-    const currentUser = user || authUser;
-    if (!currentUser?.name) return "U";
-    return currentUser.name
+    if (!user?.name) return "U";
+    return user.name
       .split(" ")
       .map((n: string) => n[0])
       .join("")
@@ -170,7 +167,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     }
   };
 
-  // Dropdown handlers
+  // Dropdown handlers (unchanged)
   const handleCatDropdownMouseEnter = () => {
     if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
     setCatDropdownOpen(true);
@@ -204,7 +201,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
   if (pathname.startsWith("/admin")) return null;
 
   // Show loading skeleton while auth is loading
-  if (authLoading || userLoading) {
+  if (authLoading) {
     return (
       <header className="sticky top-0 z-[100] w-full bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -227,7 +224,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     );
   }
 
-  const currentUser = user || authUser;
+  const currentUser = user;
 
   return (
     <>
@@ -607,7 +604,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
                     <Input
                       type="text"
                       placeholder="Search products..."
-                      className="pl-9 pr-4 py-2 w-full rounded-full bg-[#ffe9ad]/50 border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm"
+                      className="pl-9 pr-4 py-2 w-full rounded-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => {

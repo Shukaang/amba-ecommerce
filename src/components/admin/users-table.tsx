@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Edit,
   Trash2,
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/supabaseClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,50 +58,25 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
     name: string;
   } | null>(null);
 
-  const supabase = createClient();
-
+  // Fetch users via API (no direct Supabase client)
   const fetchUsers = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      if (data) {
-        setUsers(data);
-      }
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      setUsers(data.users || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to fetch users");
     }
-  }, [supabase]);
-
-  // Real-time subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel("users-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "users" },
-        () => {
-          fetchUsers();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, fetchUsers]);
+  }, []);
 
   const isSuperAdmin = currentUser?.role === "SUPERADMIN";
   const isAdmin = currentUser?.role === "ADMIN" || isSuperAdmin;
 
   // Filter users based on current user's role
   const visibleUsers = users.filter((user) => {
-    if (isSuperAdmin) return true; // SUPERADMIN sees all
-    // ADMIN sees only ADMIN and CUSTOMER
+    if (isSuperAdmin) return true;
     return user.role !== "SUPERADMIN";
   });
 
