@@ -2,8 +2,6 @@
 
 import { useState, Fragment, useEffect, useMemo, useCallback } from "react";
 import {
-  Eye,
-  EyeOff,
   Package,
   Truck,
   CheckCircle,

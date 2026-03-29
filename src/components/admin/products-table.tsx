@@ -57,7 +57,7 @@ interface Product {
     title: string;
   } | null;
   colors: string[];
-  sizes: Array<{ name: string; price: number }>;
+  sizes: Array<{ name: string; price: number | null }>;
   product_variants?: Array<{
     id: string;
     color?: string;

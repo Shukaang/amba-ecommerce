@@ -164,7 +164,7 @@ Address: ${formData.address}`;
         body: JSON.stringify({
           shippingInfo,
           totalPrice: total,
-          updateUserAddress: true,
+          updateUserAddress: false,
         }),
       });
 
