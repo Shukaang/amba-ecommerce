@@ -465,6 +465,43 @@ export default function ProductDetailClient({
     .split("\n")
     .filter((line) => line.trim() !== "");
 
+  useEffect(() => {
+    const productSchema = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.title,
+      description: product.description,
+      image: product.images[0],
+      offers: {
+        "@type": "Offer",
+        price: product.price,
+        priceCurrency: "ETB",
+        availability: "https://schema.org/InStock",
+        seller: {
+          "@type": "Organization",
+          name: "AmbaStore",
+        },
+      },
+      aggregateRating:
+        averageRating > 0 && ratings.length > 0
+          ? {
+              "@type": "AggregateRating",
+              ratingValue: averageRating,
+              reviewCount: ratings.length,
+            }
+          : undefined,
+    };
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(productSchema);
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [product, averageRating, ratings]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">

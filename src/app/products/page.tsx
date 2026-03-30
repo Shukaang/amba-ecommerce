@@ -2,6 +2,22 @@ import { createClient } from "@/lib/supabase/supabaseServer";
 import ProductCard from "@/components/products/product-card";
 import CategoryMenu from "@/components/products/category-menu";
 import { Suspense } from "react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shop All Products – AmbaStore",
+  description:
+    "Browse our full collection of quality products. New arrivals, trending items, and customer favorites.",
+  openGraph: {
+    title: "Shop All Products – AmbaStore",
+    description:
+      "Find your next favorite item. Wide range of categories with fast delivery.",
+    url: "https://ambaastore.com/products",
+  },
+  alternates: {
+    canonical: "https://ambaastore.com/products",
+  },
+};
 
 function getAllDescendantIds(
   categoryId: string,

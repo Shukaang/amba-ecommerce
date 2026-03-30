@@ -4,12 +4,57 @@ import FeaturedProducts from "@/components/user/home/featured-products";
 import CategoryShowcase from "@/components/user/home/category-showcase";
 import CategorySection from "@/components/user/home/category-section";
 import ScrollToTopButton from "@/components/user/scroll-to-top";
+import { Metadata } from "next";
+import OrganizationSchema from "@/components/seo/organization-schema";
 
 interface Category {
   id: string;
   title: string;
   parent_id: string | null;
 }
+
+export const metadata: Metadata = {
+  title: "AmbaStore – Ethiopia’s Premium Online Shopping",
+  description:
+    "Shop the best fashion, electronics, and more in Ethiopia. Free delivery in Addis Ababa. Secure payments.",
+  openGraph: {
+    title: "AmbaStore – Ethiopia’s Premium Online Shopping",
+    description:
+      "Discover quality products at great prices. New arrivals, trending items, and customer favorites.",
+    url: "https://ambaastore.com",
+    siteName: "AmbaStore",
+    images: [
+      {
+        url: "https://ambaastore.com/hero-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "AmbaStore - Shop Online in Ethiopia",
+      },
+    ],
+    locale: "en_ET",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AmbaStore – Ethiopia’s Premium Online Shopping",
+    description: "Shop with confidence. Free shipping in Addis Ababa!",
+    images: ["https://ambaastore.com/hero-image.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://ambaastore.com",
+  },
+};
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -79,6 +124,7 @@ export default async function HomePage() {
 
   return (
     <main>
+      <OrganizationSchema />
       <HeroSection />
       <FeaturedProducts initialProducts={initialNewProducts || []} />
       {rootCategories.map((cat) => (
