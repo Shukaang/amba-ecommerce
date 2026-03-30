@@ -36,19 +36,17 @@ export default function HeroSection() {
       link: "/products",
     },
     {
-      title: "በብዛት ለሚረከቡ ልዩ ቅናሽ እናደርጋለን",
+      title: "25% ቅናሽ",
       subtitle: "ትዕዛዞን በ15 ቀን ውስጥ ይረከቡ!",
-      description:
-        "በብዛት ለሚረከቡን ደንበኞቻችን በልዩ ቅናሽ እና ፍጥነት የምናቀርብ መሆኑን በደስታ እንገልፃለን!",
+      description: "በብዛት ለሚረከቡን ደንበኞቻችን በልዩ ቅናሽ እናስረክባለን!",
       image: "/hero-image.jpg",
       cta: "ያናግሩን",
       link: "tel:251975931671",
     },
     {
-      title: "Timeless Elegance",
+      title: "ምን ፈልገው አጡ?",
       subtitle: "ትዕዛዞን በ15 ቀን ውስጥ ይረከቡ!",
-      description:
-        "Discover pieces that transcend seasons. Crafted for the modern connoisseur.",
+      description: "የሚፈልጉትን ማንኛውም ዕቃ ፎቶውን ይላኩልን",
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
       cta: "View Lookbook",

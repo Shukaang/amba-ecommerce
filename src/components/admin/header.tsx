@@ -158,16 +158,6 @@ export default function AdminHeader({ user, onMenuClick }: AdminHeaderProps) {
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/admin/settings"
-                    className="cursor-pointer text-gray-800"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Admin Settings
-                  </Link>
-                </DropdownMenuItem>
-
                 <DropdownMenuSeparator className="bg-gray-400" />
 
                 <DropdownMenuItem asChild>

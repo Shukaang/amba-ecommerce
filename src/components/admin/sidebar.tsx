@@ -9,7 +9,6 @@ import {
   Users,
   ShoppingCart,
   BarChart3,
-  Shield,
   Eye,
   LayoutGrid,
   Star,
@@ -40,7 +39,6 @@ const navigation = [
 
 const superAdminNavigation = [
   { name: "Visitor Tracking", href: "/admin/visitor-tracking", icon: Eye },
-  { name: "Security", href: "/admin/security", icon: Shield },
 ];
 
 export default function AdminSidebar({
