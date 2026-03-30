@@ -49,8 +49,8 @@ export default function HeroSection() {
       description: "የሚፈልጉትን ማንኛውም ዕቃ ፎቶውን ይላኩልን",
       image:
         "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
-      cta: "View Lookbook",
-      link: "/products",
+      cta: "ያናግሩን",
+      link: "tel:251975931671",
     },
   ];
 
