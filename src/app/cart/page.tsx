@@ -274,7 +274,10 @@ export default function CartPage() {
                   </span>
                 </div>
                 <p className="text-gray-600 text-sm text-right">
-                  You pay: {half.toLocaleString("en-US")}
+                  You pay 50% now: {half.toLocaleString("en-US")}
+                </p>
+                <p className="text-gray-600 text-sm text-right">
+                  50% on delivery: {half.toLocaleString("en-US")}
                 </p>
               </div>
 
