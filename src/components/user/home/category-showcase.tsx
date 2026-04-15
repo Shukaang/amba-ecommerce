@@ -12,7 +12,6 @@ interface Category {
   description: string | null;
   image: string | null;
   parent_id: string | null;
-  product_count?: number;
 }
 
 export default function CategoryShowcase() {
@@ -182,9 +181,6 @@ export default function CategoryShowcase() {
                       Shop Now
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </span>
-                    <span className="text-white/60 text-sm">
-                      {cat4.product_count} products
-                    </span>
                   </div>
                 </div>
               </div>
@@ -216,9 +212,6 @@ export default function CategoryShowcase() {
                         <span className="text-xs font-medium border-b border-[#f73a00] pb-0.5 group-hover:border-b-2 transition-all">
                           Shop
                         </span>
-                        <span className="text-white/50 text-xs">
-                          {cat3.product_count}
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -244,9 +237,6 @@ export default function CategoryShowcase() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium border-b border-[#f73a00] pb-0.5 group-hover:border-b-2 transition-all">
                           Shop
-                        </span>
-                        <span className="text-white/50 text-xs">
-                          {cat1.product_count}
                         </span>
                       </div>
                     </div>
@@ -275,9 +265,6 @@ export default function CategoryShowcase() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium border-b border-[#f73a00] pb-0.5 group-hover:border-b-2 transition-all">
                         Shop
-                      </span>
-                      <span className="text-white/50 text-xs">
-                        {cat2.product_count}
                       </span>
                     </div>
                   </div>

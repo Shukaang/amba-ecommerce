@@ -26,39 +26,25 @@ interface Product {
   }>;
 }
 
-interface ProductsResponse {
-  products: Product[];
-}
-
-interface FeaturedProductsProps {
-  initialProducts: Product[];
-}
-
-export default function FeaturedProducts({
-  initialProducts,
-}: FeaturedProductsProps) {
+export default function FeaturedProducts() {
   const [activeTab, setActiveTab] = useState<"new" | "featured" | "trending">(
     "new",
   );
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
-  const url =
-    activeTab === "new"
-      ? "/api/products?limit=15&sort=newest"
-      : activeTab === "trending"
-        ? "/api/products?limit=15&sort=trending"
-        : "/api/products?limit=15&featured=true";
+  const url = `/api/featured-products?tab=${activeTab}`;
 
-  const { data, error, isLoading } = useSWR<ProductsResponse>(url, fetcher, {
-    fallbackData:
-      activeTab === "new" ? { products: initialProducts } : undefined,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, error, isLoading } = useSWR<{ products: Product[] }>(
+    url,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 
   const products = data?.products || [];
 
-  // Scroll active tab into view on mobile when it changes
   useEffect(() => {
     if (tabContainerRef.current) {
       const activeButton = tabContainerRef.current.querySelector(
@@ -81,9 +67,10 @@ export default function FeaturedProducts({
   ] as const;
 
   if (error) {
+    console.error("FeaturedProducts error:", error);
     return (
       <div className="text-center py-12 text-red-500">
-        Failed to load products
+        Failed to load products. Please refresh.
       </div>
     );
   }
@@ -106,7 +93,6 @@ export default function FeaturedProducts({
             </p>
           </div>
 
-          {/* Scrollable tabs on mobile */}
           <div
             ref={tabContainerRef}
             className="w-full md:w-auto mt-4 md:mt-0 overflow-x-auto scrollbar-hide"
@@ -155,7 +141,7 @@ export default function FeaturedProducts({
               </div>
             ))
           ) : products.length > 0 ? (
-            products.map((product: Product) => (
+            products.map((product) => (
               <PremiumProductCard key={product.id} product={product} />
             ))
           ) : (

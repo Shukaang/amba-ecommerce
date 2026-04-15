@@ -1,7 +1,5 @@
 "use client";
 
-import useSWR from "swr";
-import { fetcher } from "@/lib/utils/fetcher";
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";

@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Bell,
-  User,
-  LogOut,
-  Settings,
-  Home,
-  ChevronDown,
-  Menu,
-} from "lucide-react";
+import { User, LogOut, Home, ChevronDown, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -87,12 +79,6 @@ export default function AdminHeader({ user, onMenuClick }: AdminHeaderProps) {
                 <span>View Site</span>
               </Button>
             </Link>
-
-            {/* Notifications */}
-            <button className="relative p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-            </button>
 
             {/* User Dropdown */}
             <DropdownMenu>

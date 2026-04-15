@@ -5,7 +5,7 @@ import { generateUniqueSlug } from '@/lib/utils/slug';
 import { uploadProductImage } from '@/lib/supabase/storage';
 import { verifyAuth } from '@/lib/auth/middleware';
 
-// Public GET – unchanged
+// Public GET
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (featured) {
-      query = query.gte('average_rating', 4.0);
+      query = query.gte('average_rating', 4.3);
     }
 
     if (sort === 'newest') {

@@ -59,7 +59,7 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // Fetch root categories and build descendant map for sections
+  // Fetch all categories
   const { data: allCategories } = await supabase
     .from("categories")
     .select("id, title, parent_id")
@@ -67,7 +67,7 @@ export default async function HomePage() {
 
   if (!allCategories) return null;
 
-  // Build map of parent to children
+  // Build category tree and root categories
   const childrenMap = new Map<string, Category[]>();
   const roots: Category[] = [];
   allCategories.forEach((cat) => {
@@ -90,9 +90,9 @@ export default async function HomePage() {
     return descendants;
   };
 
-  const rootCategories = roots.slice(0, 4); // use first four
+  const rootCategories = roots.slice(0, 4);
 
-  // For each root category, fetch initial products (for the server-side fallback)
+  // For each root category, fetch initial products for CategorySection
   const categoryInitialData = await Promise.all(
     rootCategories.map(async (cat) => {
       const descendantIds = getDescendantIds(cat.id);
@@ -108,16 +108,6 @@ export default async function HomePage() {
     }),
   );
 
-  // For featured products, fetch initial "new" products (for fallback)
-  const { data: initialNewProducts } = await supabase
-    .from("products")
-    .select("*")
-    .is("deleted_at", null)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-    .limit(15);
-
-  // Build a map for quick lookup
   const categoryInitialMap = new Map(
     categoryInitialData.map((item) => [item.id, item.products]),
   );
@@ -126,7 +116,7 @@ export default async function HomePage() {
     <main>
       <OrganizationSchema />
       <HeroSection />
-      <FeaturedProducts initialProducts={initialNewProducts || []} />
+      <FeaturedProducts /> {/* No props – API handles logic */}
       {rootCategories.map((cat) => (
         <CategorySection
           key={cat.id}
