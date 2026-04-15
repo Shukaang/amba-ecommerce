@@ -132,7 +132,7 @@ export default async function ProductsPage({
     query = query.in("category_id", categoryIdsToFilter);
   }
 
-  const { data: products, error } = await query.limit(50);
+  const { data: products, error } = await query;
 
   if (error) {
     console.error("Error fetching products:", error);
