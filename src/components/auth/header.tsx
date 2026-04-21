@@ -12,10 +12,12 @@ export default function Header() {
             AmbaStore
           </Link>
         </div>
-        <div className="flex items-center gap-0 hover:underline cursor-pointer">
-          <CircleQuestionMark className="text-xs text-white fill-gray-700" />
-          <p className="text-gray-700">Support</p>
-        </div>
+        <Link href="mailto: support@ambaastore.com">
+          <div className="flex items-center gap-0 hover:underline cursor-pointer">
+            <CircleQuestionMark className="text-xs text-white fill-gray-700" />
+            <p className="text-gray-700">Support</p>
+          </div>
+        </Link>
       </div>
     </header>
   );

@@ -97,9 +97,10 @@ function Dialog({
 
 // Content components (copy from your user footer, adjust colors if needed)
 function PrivacyContent() {
+  const currentYear = new Date().getFullYear();
   return (
     <div className="prose max-w-none">
-      <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+      <p className="text-gray-600 mb-6">Effective Date: Jan {currentYear}</p>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
         Information We Collect
       </h3>
@@ -157,9 +158,10 @@ function PrivacyContent() {
 }
 
 function TermsContent() {
+  const currentYear = new Date().getFullYear();
   return (
     <div className="prose max-w-none">
-      <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+      <p className="text-gray-600 mb-6">Effective Date: Jan {currentYear}</p>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
         Acceptance of Terms
       </h3>
@@ -226,9 +228,10 @@ function TermsContent() {
 }
 
 function CookieContent() {
+  const currentYear = new Date().getFullYear();
   return (
     <div className="prose max-w-none">
-      <p className="text-gray-600 mb-6">Effective Date: 22/2/2026</p>
+      <p className="text-gray-600 mb-6">Effective Date: Jan {currentYear}</p>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
         What Are Cookies
       </h3>

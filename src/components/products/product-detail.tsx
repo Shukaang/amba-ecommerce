@@ -115,21 +115,31 @@ export default function ProductDetailClient({
   const pathname = usePathname();
   const trackProduct = useTrackProduct();
 
-  // Product state – new: selectedColor, smarter selectedVariant initialization
+  // Product state – selectedColor, selectedVariant
   const [selectedColor, setSelectedColor] = useState<string | null>(
     product.colors?.[0] || null,
   );
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     () => {
       if (product.product_variants.length > 0) {
-        // Try to match first color and first size
         const firstColor = product.colors?.[0];
-        const firstSize = product.sizes?.[0]?.name;
-        if (firstColor && firstSize) {
-          const variant = product.product_variants.find(
-            (v) => v.color === firstColor && v.size === firstSize,
-          );
-          if (variant) return variant;
+        // If there are sizes, try to match first color with first size
+        if (product.sizes && product.sizes.length > 0) {
+          const firstSize = product.sizes[0]?.name;
+          if (firstColor && firstSize) {
+            const variant = product.product_variants.find(
+              (v) => v.color === firstColor && v.size === firstSize,
+            );
+            if (variant) return variant;
+          }
+        } else {
+          // No sizes: find variant with first color and size null
+          if (firstColor) {
+            const variant = product.product_variants.find(
+              (v) => v.color === firstColor && v.size === null,
+            );
+            if (variant) return variant;
+          }
         }
         // Fallback to first variant
         return product.product_variants[0];
@@ -598,7 +608,7 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* Right: Product info – variant selection updated */}
+          {/* Right: Product info */}
           <div className="space-y-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -677,11 +687,19 @@ export default function ProductDetailClient({
                       key={color}
                       onClick={() => {
                         setSelectedColor(color);
-                        // Try to select the first size for this color
-                        const firstSize = product.sizes?.[0]?.name;
-                        if (firstSize) {
+                        if (product.sizes && product.sizes.length > 0) {
+                          // If sizes exist, try to select the first size for this color
+                          const firstSize = product.sizes[0]?.name;
+                          if (firstSize) {
+                            const variant = product.product_variants.find(
+                              (v) => v.color === color && v.size === firstSize,
+                            );
+                            if (variant) setSelectedVariant(variant);
+                          }
+                        } else {
+                          // No sizes: find variant with this color and size null
                           const variant = product.product_variants.find(
-                            (v) => v.color === color && v.size === firstSize,
+                            (v) => v.color === color && v.size === null,
                           );
                           if (variant) setSelectedVariant(variant);
                         }
@@ -699,7 +717,7 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {/* Sizes */}
+            {/* Sizes – only if product has sizes */}
             {selectedColor && product.sizes && product.sizes.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Size</h3>
@@ -709,7 +727,6 @@ export default function ProductDetailClient({
                       (v) => v.color === selectedColor && v.size === size.name,
                     );
                     if (!variant) return null;
-                    // Use size.price if it's a number > 0, otherwise use product.price
                     const displayPrice =
                       size.price && size.price > 0 ? size.price : product.price;
                     return (
@@ -831,7 +848,6 @@ export default function ProductDetailClient({
               </div>
             </TabsContent>
             <TabsContent value="reviews" className="space-y-4">
-              {/* ... entire reviews section unchanged ... */}
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center gap-4">
                   <span className="text-3xl font-bold text-gray-900">
