@@ -50,14 +50,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
   const variantPrices = product.product_variants?.map((v) => v.price) ?? [];
   const hasVariants = variantPrices.length > 0;
 
-  // Determine if product has only color variants (no sizes)
-  const hasOnlyColors =
-    hasVariants &&
-    product.product_variants?.every((v) => v.size === null && v.color !== null);
-  // Determine if product has sizes (any variant with size not null)
-  const hasSizes =
-    hasVariants && product.product_variants?.some((v) => v.size !== null);
-
   const minPrice = hasVariants
     ? Math.min(...variantPrices, product.price)
     : product.price;
@@ -120,12 +112,13 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    // If product has only colors (no sizes), redirect to detail page
-    if (hasOnlyColors) {
+    // If product has ANY variants (colors or sizes), redirect to detail page
+    if (hasVariants) {
       router.push(`/products/${product.slug}`);
       return;
     }
 
+    // No variants: simple add to cart
     if (!user) {
       await addToCart({
         productId: product.id,
@@ -136,13 +129,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
       return;
     }
 
-    if (hasVariants) {
-      // If there are sizes or other variants, redirect to detail page
-      router.push(`/products/${product.slug}`);
-      return;
-    }
-
-    // No variants: simple add to cart
     setIsAdding(true);
     try {
       const currentEl = e.currentTarget as HTMLElement;
@@ -180,8 +166,8 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
     }
   };
 
-  // Determine if the quick add button should be shown (only when product has no variants OR has sizes? Actually we want to redirect for any variant except simple products)
-  const showQuickAdd = !hasVariants; // only show quick add for products with no variants at all
+  // Show quick add only for products with no variants at all
+  const showQuickAdd = !hasVariants;
 
   return (
     <Link href={`/products/${product.slug}`} onClick={handleCardClick}>
@@ -191,7 +177,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="relative aspect-[4/4] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-          {/* Images - unchanged */}
+          {/* Images */}
           <div
             className={`absolute inset-0 transition-opacity duration-700 ${
               isHovered && secondaryImage !== mainImage
@@ -235,7 +221,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
             )}
           </div>
 
-          {/* Favorite button - unchanged */}
+          {/* Favorite button */}
           <div
             className={`
               absolute top-4 right-4 flex-col gap-2 z-10
@@ -265,7 +251,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
             </button>
           </div>
 
-          {/* Quick add button - only for products with no variants */}
+          {/* Quick add button – only for products without any variants */}
           {showQuickAdd && (
             <div
               className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
@@ -310,29 +296,17 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 Br {minPrice.toLocaleString("en-US")}
               </span>
             </div>
-            {/* Add button: if product has any variant (colors or sizes), redirect to detail; otherwise add to cart */}
-            {hasVariants ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(`/products/${product.slug}`)}
-                className="text-[#f73a00] hover:text-[#f73a00]/80 hover:bg-[#f73a00]/10"
-              >
-                <ShoppingBag className="h-4 w-4 mr-1" />
-                View
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddToCart}
-                disabled={isAdding}
-                className="text-[#f73a00] hover:text-[#f73a00]/80 hover:bg-[#f73a00]/10"
-              >
-                <ShoppingBag className="h-4 w-4 mr-1" />
-                Add
-              </Button>
-            )}
+            {/* Single button: always "Add" but redirects to detail if product has variants */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAddToCart}
+              disabled={isAdding}
+              className="text-[#f73a00] hover:text-[#f73a00]/80 hover:bg-[#f73a00]/10"
+            >
+              <ShoppingBag className="h-4 w-4 mr-1" />
+              {isAdding ? "Adding..." : "Add"}
+            </Button>
           </div>
         </div>
       </div>
