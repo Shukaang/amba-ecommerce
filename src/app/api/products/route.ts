@@ -21,15 +21,15 @@ export async function GET(request: NextRequest) {
     const supabase = await createAdminClient();
 
     let query = supabase
-      .from('products')
-      .select(
-        `
-        *,
-        categories(title),
-        product_variants(*)
-      `,
-        { count: 'exact' }
-      )
+  .from('products')
+  .select(
+    `
+    *,
+    categories(title),
+    product_variants(*)
+  `,
+    { count: 'exact' }
+  )
       .is('deleted_at', null)
       .eq('status', 'approved'); 
 
@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryParam && !['all', 'men', 'women', 'electronics', 'kids'].includes(categoryParam)) {
-  // If it's a single UUID or a comma‑separated list
-    categoryIds = categoryParam.split(',');
-    query = query.in('category_id', categoryIds);
-  }
+      // If it's a single UUID or a comma‑separated list
+      categoryIds = categoryParam.split(',');
+      query = query.in('category_id', categoryIds);
+    }
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
@@ -67,18 +67,18 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json(
-  {
-    products: products || [],
-    total: count || 0,
-    page,
-    pages: Math.ceil((count || 0) / limit),
-  },
-  {
-    headers: {
-      'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
-    },
-  }
-);
+      {
+        products: products || [],
+        total: count || 0,
+        page,
+        pages: Math.ceil((count || 0) / limit),
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to fetch products' },

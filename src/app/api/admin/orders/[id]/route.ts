@@ -72,17 +72,25 @@ export async function PUT(
     // Send email if status changes from PENDING to CONFIRMED
 if (status === 'CONFIRMED' && existing.status === 'PENDING') {
   if (fullOrder.users?.email && fullOrder.order_number) {
-    const items = fullOrder.order_items.map((item: any) => ({
-      title: item.products.title,
-      quantity: item.quantity,
-      price: item.price,
-      variant: item.product_variants
-        ? [item.product_variants.color, item.product_variants.size, item.product_variants.unit]
-            .filter(Boolean)
-            .join(' • ')
-        : undefined,
-      image: item.products.images?.[0]
-    }));
+    const items = fullOrder.order_items.map((item: any) => {
+      let variantStr: string | undefined;
+      if (item.product_variants) {
+        variantStr = [item.product_variants.color, item.product_variants.size, item.product_variants.unit]
+        .filter(Boolean)
+        .join(' • ');
+      } else if (item.selected_options) {
+        variantStr = [item.selected_options.color, item.selected_options.size]
+        .filter(Boolean)
+        .join(' • ');
+      }
+      return {
+        title: item.products.title,
+        quantity: item.quantity,
+        price: item.price,
+        variant: variantStr || undefined,
+        image: item.products.images?.[0],
+      };
+    });
 
     const deliveryInfo =
       'Delivery within 2-3 weeks. Free in Addis Ababa, EMS shipping fee applies to other cities.';

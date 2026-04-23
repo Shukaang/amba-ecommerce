@@ -27,6 +27,10 @@ interface CartItem {
     size: string | null;
     unit: string | null;
   } | null;
+  selectedOptions?: {
+    color?: string;
+    size?: string;
+  } | null;
 }
 
 interface CartContextType {
@@ -110,6 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     variantId: string | null;
     quantity: number;
     price: number;
+    selectedOptions?: { color?: string; size?: string } | null;
   }) => {
     if (!requireAuth()) return; // will redirect and stop execution
 
@@ -138,6 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             slug: "",
           },
           variant: null,
+          selectedOptions: newItem.selectedOptions,
         };
         return [...current, optimisticItem];
       }

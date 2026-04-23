@@ -527,48 +527,63 @@ Address: ${formData.address}`;
                 <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-white">
                   {/* Items List - Scrollable on mobile if many items */}
                   <div className="space-y-3 max-h-60 sm:max-h-96 overflow-y-auto pr-1 sm:pr-2">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex gap-2 sm:gap-3">
-                        <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                          {item.product.images?.[0] ? (
-                            <img
-                              src={item.product.images[0]}
-                              alt={item.product.title}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Package className="h-4 w-4 sm:h-6 sm:w-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 text-xs sm:text-sm line-clamp-1">
-                            {item.product.title}
-                          </h4>
-                          {item.variant && (
-                            <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                              {[
-                                item.variant.color,
-                                item.variant.size,
-                                item.variant.unit,
-                              ]
-                                .filter(Boolean)
-                                .join(" • ")}
+                    {items.map((item) => {
+                      // Build variant display string from variant OR selectedOptions
+                      const variantParts = [];
+                      if (item.variant?.color)
+                        variantParts.push(item.variant.color);
+                      if (item.variant?.size)
+                        variantParts.push(item.variant.size);
+                      if (item.variant?.unit)
+                        variantParts.push(item.variant.unit);
+
+                      // Fallback for single‑dimension variants (color‑only / size‑only)
+                      if (!item.variant && item.selectedOptions) {
+                        if (item.selectedOptions.color)
+                          variantParts.push(item.selectedOptions.color);
+                        if (item.selectedOptions.size)
+                          variantParts.push(item.selectedOptions.size);
+                      }
+
+                      const variantText = variantParts.join(" • ");
+
+                      return (
+                        <div key={item.id} className="flex gap-2 sm:gap-3">
+                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                            {item.product.images?.[0] ? (
+                              <img
+                                src={item.product.images[0]}
+                                alt={item.product.title}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Package className="h-4 w-4 sm:h-6 sm:w-6 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 text-xs sm:text-sm line-clamp-1">
+                              {item.product.title}
+                            </h4>
+                            {variantText && (
+                              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                                {variantText}
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-[10px] sm:text-xs text-gray-500">
+                                Qty: {item.quantity}
+                              </span>
+                              <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                                Br{" "}
+                                {(item.price * item.quantity).toLocaleString(
+                                  "en-US",
+                                )}
+                              </span>
                             </div>
-                          )}
-                          <div className="flex justify-between items-center mt-1">
-                            <span className="text-[10px] sm:text-xs text-gray-500">
-                              Qty: {item.quantity}
-                            </span>
-                            <span className="text-xs sm:text-sm font-semibold text-gray-900">
-                              Br{" "}
-                              {(item.price * item.quantity).toLocaleString(
-                                "en-US",
-                              )}
-                            </span>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <Separator className="bg-gray-200" />

@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/context";
 import { useFavorites } from "@/lib/favorites/context";
 import { useRouter } from "next/navigation";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
+import { hasVariantOptions } from "@/lib/utils/variant-checker";
 
 interface Product {
   id: string;
@@ -28,6 +29,8 @@ interface Product {
     unit?: string;
     price: number;
   }>;
+  colors?: string[] | null;
+  sizes?: Array<{ name: string; price: number }> | null;
 }
 
 interface PremiumProductCardProps {
@@ -49,12 +52,12 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
 
   const variantPrices = product.product_variants?.map((v) => v.price) ?? [];
   const hasVariants = variantPrices.length > 0;
-
   const minPrice = hasVariants
     ? Math.min(...variantPrices, product.price)
     : product.price;
 
   const productIsFavorite = isFavorite(product.id);
+  const requiresVariant = hasVariantOptions(product);
 
   const createCartAnimation = (startRect: DOMRect) => {
     const animationEl = document.createElement("div");
@@ -112,20 +115,9 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    // If product has ANY variants (colors or sizes), redirect to detail page
-    if (hasVariants) {
+    // Redirect to detail page if product has variant options
+    if (requiresVariant) {
       router.push(`/products/${product.slug}`);
-      return;
-    }
-
-    // No variants: simple add to cart
-    if (!user) {
-      await addToCart({
-        productId: product.id,
-        variantId: null,
-        quantity: 1,
-        price: minPrice,
-      });
       return;
     }
 
@@ -165,9 +157,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
       setFavoriteLoading(false);
     }
   };
-
-  // Show quick add only for products with no variants at all
-  const showQuickAdd = !hasVariants;
 
   return (
     <Link href={`/products/${product.slug}`} onClick={handleCardClick}>
@@ -251,22 +240,24 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
             </button>
           </div>
 
-          {/* Quick add button – only for products without any variants */}
-          {showQuickAdd && (
-            <div
-              className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
+          {/* Quick add button */}
+          <div
+            className={`absolute bottom-4 left-4 right-4 hidden md:block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300`}
+          >
+            <Button
+              onClick={handleAddToCart}
+              disabled={isAdding}
+              className="w-full bg-white hover:bg-white/95 text-[#f73a00] hover:text-[#f73a00]/90 font-bold py-4 rounded-xl shadow-xl backdrop-blur-sm border-0"
+              size="lg"
             >
-              <Button
-                onClick={handleAddToCart}
-                disabled={isAdding}
-                className="w-full bg-white hover:bg-white/95 text-[#f73a00] hover:text-[#f73a00]/90 font-bold py-4 rounded-xl shadow-xl backdrop-blur-sm border-0"
-                size="lg"
-              >
-                <ShoppingBag className="mr-2 h-5 w-5" />
-                {isAdding ? "Adding..." : "Quick Add"}
-              </Button>
-            </div>
-          )}
+              <ShoppingBag className="mr-2 h-5 w-5" />
+              {isAdding
+                ? "Adding..."
+                : requiresVariant
+                  ? "Select Options"
+                  : "Quick Add"}
+            </Button>
+          </div>
         </div>
 
         <div className="py-2 px-2 flex-1">
@@ -296,7 +287,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 Br {minPrice.toLocaleString("en-US")}
               </span>
             </div>
-            {/* Single button: always "Add" but redirects to detail if product has variants */}
             <Button
               variant="ghost"
               size="sm"
@@ -305,7 +295,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
               className="text-[#f73a00] hover:text-[#f73a00]/80 hover:bg-[#f73a00]/10"
             >
               <ShoppingBag className="h-4 w-4 mr-1" />
-              {isAdding ? "Adding..." : "Add"}
+              Add
             </Button>
           </div>
         </div>

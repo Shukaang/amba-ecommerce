@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import {
   Package,
-  Truck,
   CheckCircle,
   Clock,
   XCircle,
@@ -40,6 +39,10 @@ interface OrderItem {
     color: string;
     size: string;
     unit: string;
+  } | null;
+  selected_options: {
+    color?: string;
+    size?: string;
   } | null;
 }
 
@@ -392,15 +395,22 @@ export default function UserOrdersPage() {
                                       <h5 className="font-medium text-gray-900 text-sm sm:text-base truncate">
                                         {item.products.title}
                                       </h5>
-                                      {item.product_variants && (
+                                      {(item.product_variants ||
+                                        item.selected_options) && (
                                         <div className="text-xs text-gray-500 mt-0.5">
                                           {[
-                                            item.product_variants.color &&
-                                              `Color: ${item.product_variants.color}`,
-                                            item.product_variants.size &&
-                                              `Size: ${item.product_variants.size}`,
-                                            item.product_variants.unit &&
-                                              `Unit: ${item.product_variants.unit}`,
+                                            item.product_variants?.color &&
+                                              item.product_variants.color,
+                                            item.product_variants?.size &&
+                                              item.product_variants.size,
+                                            item.product_variants?.unit &&
+                                              item.product_variants.unit,
+                                            !item.product_variants &&
+                                              item.selected_options?.color &&
+                                              item.selected_options.color,
+                                            !item.product_variants &&
+                                              item.selected_options?.size &&
+                                              item.selected_options.size,
                                           ]
                                             .filter(Boolean)
                                             .join(" • ")}

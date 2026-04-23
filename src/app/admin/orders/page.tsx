@@ -11,11 +11,7 @@ export default async function AdminOrdersPage() {
       *,
       users!orders_user_id_fkey(id, name, email, phone, address),
       updated_by_user:users!orders_updated_by_fkey(id, name, email),
-      order_items(
-        *,
-        products(*),
-        product_variants(*)
-      )
+      order_items(*, products(*), product_variants(*), selected_options)
     `,
     )
     .order("created_at", { ascending: false });

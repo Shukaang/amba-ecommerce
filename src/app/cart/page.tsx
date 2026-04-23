@@ -134,6 +134,14 @@ export default function CartPage() {
                     variantParts.push(`Size: ${item.variant.size}`);
                   if (item.variant?.unit)
                     variantParts.push(`Unit: ${item.variant.unit}`);
+
+                  // Fallback for single‑dimension variants
+                  if (!item.variant && item.selectedOptions) {
+                    if (item.selectedOptions.color)
+                      variantParts.push(`Color: ${item.selectedOptions.color}`);
+                    if (item.selectedOptions.size)
+                      variantParts.push(`Size: ${item.selectedOptions.size}`);
+                  }
                   const variantDisplay = variantParts.join(" • ");
 
                   // Get product slug - MUST exist in database

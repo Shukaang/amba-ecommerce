@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
       product_id: item.product_id,
       variant_id: item.variant_id,
       quantity: item.quantity,
-      price: item.price, // ✅ Use the price from cart_items (correct variant or product price)
+      price: item.price,
+      selected_options: item.selected_options || null,
     }))
 
     const { error: orderItemsError } = await supabase

@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
         size: item.product_variants.size,
         unit: item.product_variants.unit,
       } : null,
+      selectedOptions: item.selected_options, 
     }))
 
     const total = formattedItems.reduce(
@@ -73,8 +74,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json()
-    const { productId, variantId, quantity = 1 } = body
+    const body = await request.json();
+    const { productId, variantId, quantity = 1, selectedOptions } = body;
 
     if (!productId || quantity < 1) {
       return NextResponse.json(
@@ -147,43 +148,34 @@ export async function POST(request: NextRequest) {
       .eq('variant_id', variantId)
       .maybeSingle()
 
-    let cartItem
-
-    if (existingItem) {
-      // Update quantity
-      const { data: updatedItem, error: updateError } = await supabase
-        .from('cart_items')
-        .update({
-          quantity: existingItem.quantity + quantity,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingItem.id)
-        .select(`
-          *,
-          products!inner(title, images, slug),
-          product_variants!left(color, size, unit)
-        `)
-        .single()
-
-      if (updateError) throw updateError
-      cartItem = updatedItem
-    } else {
-      // Create new cart item
-      const { data: newItem, error: insertError } = await supabase
-        .from('cart_items')
-        .insert({
-          user_id: user.id,
-          product_id: productId,
-          variant_id: variantId,
-          quantity,
-          price: itemPrice,
-        })
-        .select(`
-          *,
-          products!inner(title, images, slug),
-          product_variants!left(color, size, unit)
-        `)
-        .single()
+    let cartItem;
+  if (existingItem) {
+    // Update quantity, keep selected_options
+    const { data: updatedItem, error: updateError } = await supabase
+      .from('cart_items')
+      .update({
+        quantity: existingItem.quantity + quantity,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingItem.id)
+      .select(`*, products!inner(title, images, slug), product_variants!left(color, size, unit)`)
+      .single();
+    // ...
+    cartItem = updatedItem;
+  } else {
+    // Insert with selected_options
+    const { data: newItem, error: insertError } = await supabase
+      .from('cart_items')
+      .insert({
+        user_id: user.id,
+        product_id: productId,
+        variant_id: variantId,
+        quantity,
+        price: itemPrice,
+        selected_options: selectedOptions || null,   // NEW
+      })
+      .select(`*, products!inner(title, images, slug), product_variants!left(color, size, unit)`)
+      .single();
 
       if (insertError) throw insertError
       cartItem = newItem
@@ -205,7 +197,8 @@ export async function POST(request: NextRequest) {
         size: cartItem.product_variants.size,
         unit: cartItem.product_variants.unit,
       } : null,
-    }
+      selectedOptions: cartItem.selected_options,
+    };
 
     return NextResponse.json({
       item: formattedItem,

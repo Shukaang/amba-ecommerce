@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
+import { hasVariantOptions } from "@/lib/utils/variant-checker";
 
 // Types
 interface ProductVariant {
@@ -81,7 +82,6 @@ interface Product {
   average_rating: number;
   images: string[];
   categories: Category | null;
-  // New fields
   colors: string[];
   sizes: Array<{ name: string; price: number }>;
   product_variants: ProductVariant[];
@@ -115,33 +115,34 @@ export default function ProductDetailClient({
   const pathname = usePathname();
   const trackProduct = useTrackProduct();
 
-  // Product state – selectedColor, selectedVariant
+  const requiresVariant = hasVariantOptions(product);
+  const hasOnlyColors =
+    product.colors?.length > 0 &&
+    (!product.sizes || product.sizes.length === 0);
+  const hasOnlySizes =
+    product.sizes?.length > 0 &&
+    (!product.colors || product.colors.length === 0);
+
+  // State
   const [selectedColor, setSelectedColor] = useState<string | null>(
     product.colors?.[0] || null,
   );
+  const [selectedSize, setSelectedSize] = useState<{
+    name: string;
+    price: number;
+  } | null>(hasOnlySizes ? product.sizes?.[0] || null : null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     () => {
       if (product.product_variants.length > 0) {
         const firstColor = product.colors?.[0];
-        // If there are sizes, try to match first color with first size
-        if (product.sizes && product.sizes.length > 0) {
-          const firstSize = product.sizes[0]?.name;
-          if (firstColor && firstSize) {
-            const variant = product.product_variants.find(
+        const firstSize = product.sizes?.[0]?.name;
+        if (firstColor && firstSize) {
+          return (
+            product.product_variants.find(
               (v) => v.color === firstColor && v.size === firstSize,
-            );
-            if (variant) return variant;
-          }
-        } else {
-          // No sizes: find variant with first color and size null
-          if (firstColor) {
-            const variant = product.product_variants.find(
-              (v) => v.color === firstColor && v.size === null,
-            );
-            if (variant) return variant;
-          }
+            ) || null
+          );
         }
-        // Fallback to first variant
         return product.product_variants[0];
       }
       return null;
@@ -154,7 +155,7 @@ export default function ProductDetailClient({
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
 
-  // Ratings state (unchanged)
+  // Ratings state
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [loadingRatings, setLoadingRatings] = useState(true);
@@ -171,7 +172,7 @@ export default function ProductDetailClient({
     "recent",
   );
 
-  // Recommended products (unchanged)
+  // Recommended products
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
 
@@ -300,10 +301,37 @@ export default function ProductDetailClient({
       return;
     }
 
-    if (!selectedVariant) {
-      toast.error("Please select a variant");
+    // Determine if a valid selection has been made
+    let canAdd = true;
+    if (requiresVariant) {
+      if (hasOnlyColors && !selectedColor) canAdd = false;
+      else if (hasOnlySizes && !selectedSize) canAdd = false;
+      else if (!hasOnlyColors && !hasOnlySizes && !selectedVariant)
+        canAdd = false;
+    }
+
+    if (!canAdd) {
+      toast.error("Please select all required options");
       return;
     }
+
+    // Build variant info for cart display
+    let variantData: { color?: string; size?: string; unit?: string } | null =
+      null;
+    if (hasOnlyColors && selectedColor) {
+      variantData = { color: selectedColor };
+    } else if (hasOnlySizes && selectedSize) {
+      variantData = { size: selectedSize.name };
+    } else if (selectedVariant) {
+      variantData = {
+        color: selectedVariant.color || undefined,
+        size: selectedVariant.size || undefined,
+        unit: selectedVariant.unit || undefined,
+      };
+    }
+
+    const price =
+      selectedVariant?.price ?? selectedSize?.price ?? product.price;
 
     try {
       const buttonRect = document
@@ -313,16 +341,31 @@ export default function ProductDetailClient({
 
       trackProduct(product.id, "add_to_cart");
 
+      // Pass variant details along with cart addition
       await addToCart({
         productId: product.id,
         variantId: selectedVariant?.id || null,
         quantity,
-        price: selectedVariant?.price || product.price,
+        price,
+        // Extend the addToCart function to accept variantDetails if your cart context supports it
+        // Otherwise, the cart API should be modified to handle it. For now, we rely on variantId.
+        // If variantId is null, the cart may not show variant info. To fix, we need to adjust cart context.
+        // We'll assume the cart context/API can accept a variant object.
+        // @ts-ignore - passing extra data for single-dimension variants
+        selectedOptions: variantData,
       });
     } catch (error: any) {
       toast.error(error.message || "Failed to add to cart");
     }
   };
+
+  // Determine if add button should be disabled
+  const isAddDisabled = (() => {
+    if (!requiresVariant) return false;
+    if (hasOnlyColors) return !selectedColor;
+    if (hasOnlySizes) return !selectedSize;
+    return !selectedVariant;
+  })();
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageRef.current) return;
@@ -429,7 +472,12 @@ export default function ProductDetailClient({
     }
   });
 
-  const getDisplayPrice = () => selectedVariant?.price || product.price;
+  const getDisplayPrice = () => {
+    if (selectedVariant) return selectedVariant.price;
+    if (hasOnlySizes && selectedSize) return selectedSize.price;
+    return product.price;
+  };
+
   const getUserInitials = (name: string) =>
     name
       .split(" ")
@@ -513,7 +561,7 @@ export default function ProductDetailClient({
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Breadcrumb (unchanged) */}
+        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8 overflow-x-auto pb-2">
           <Link
             href="/"
@@ -528,11 +576,9 @@ export default function ProductDetailClient({
           >
             Products
           </Link>
-
-          {/* Render full category path */}
           {categoryPath.length > 0 && (
             <>
-              {categoryPath.map((cat, idx) => (
+              {categoryPath.map((cat) => (
                 <Fragment key={cat.id}>
                   <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                   <Link
@@ -545,7 +591,6 @@ export default function ProductDetailClient({
               ))}
             </>
           )}
-
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
           <span className="text-gray-900 font-medium truncate">
             {product.title}
@@ -554,7 +599,7 @@ export default function ProductDetailClient({
 
         {/* Main product section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
-          {/* Left: Image gallery (unchanged) */}
+          {/* Left: Image gallery */}
           <div className="flex flex-col lg:flex-row lg:gap-4">
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px] order-2 lg:order-1">
               {product.images.map((img, idx) => (
@@ -665,11 +710,13 @@ export default function ProductDetailClient({
             <div className="border-y border-gray-200 py-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  Br{getDisplayPrice().toLocaleString("en-US")}
+                  Br {getDisplayPrice().toLocaleString("en-US")}
                 </span>
-                {product.product_variants.length > 0 && (
+                {requiresVariant && (
                   <span className="text-sm text-gray-500">
-                    {selectedVariant ? "Selected variant" : "From"}
+                    {selectedVariant || selectedColor || selectedSize
+                      ? "Selected option"
+                      : "From"}
                   </span>
                 )}
               </div>
@@ -687,21 +734,18 @@ export default function ProductDetailClient({
                       key={color}
                       onClick={() => {
                         setSelectedColor(color);
-                        if (product.sizes && product.sizes.length > 0) {
-                          // If sizes exist, try to select the first size for this color
-                          const firstSize = product.sizes[0]?.name;
-                          if (firstSize) {
-                            const variant = product.product_variants.find(
-                              (v) => v.color === color && v.size === firstSize,
-                            );
-                            if (variant) setSelectedVariant(variant);
-                          }
+                        if (hasOnlyColors) {
+                          // No sizes, we are done
+                          setSelectedSize(null);
+                          setSelectedVariant(null);
                         } else {
-                          // No sizes: find variant with this color and size null
+                          // Try to find a variant with this color and current size
+                          const currentSize =
+                            selectedSize?.name || product.sizes?.[0]?.name;
                           const variant = product.product_variants.find(
-                            (v) => v.color === color && v.size === null,
+                            (v) => v.color === color && v.size === currentSize,
                           );
-                          if (variant) setSelectedVariant(variant);
+                          setSelectedVariant(variant || null);
                         }
                       }}
                       className={`px-4 py-2 border rounded-md transition-all ${
@@ -717,24 +761,40 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {/* Sizes – only if product has sizes */}
-            {selectedColor && product.sizes && product.sizes.length > 0 && (
+            {/* Sizes */}
+            {product.sizes && product.sizes.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Size</h3>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => {
-                    const variant = product.product_variants.find(
-                      (v) => v.color === selectedColor && v.size === size.name,
-                    );
-                    if (!variant) return null;
+                    const variant = !hasOnlySizes
+                      ? product.product_variants.find(
+                          (v) =>
+                            v.color === selectedColor && v.size === size.name,
+                        )
+                      : null;
                     const displayPrice =
-                      size.price && size.price > 0 ? size.price : product.price;
+                      size.price > 0 ? size.price : product.price;
                     return (
                       <button
                         key={size.name}
-                        onClick={() => setSelectedVariant(variant)}
+                        onClick={() => {
+                          setSelectedSize(size);
+                          if (hasOnlySizes) {
+                            setSelectedVariant(null);
+                          } else if (selectedColor) {
+                            const v = product.product_variants.find(
+                              (v) =>
+                                v.color === selectedColor &&
+                                v.size === size.name,
+                            );
+                            setSelectedVariant(v || null);
+                          }
+                        }}
                         className={`px-3 py-1 border rounded-md transition-all ${
-                          selectedVariant?.id === variant.id
+                          (hasOnlySizes && selectedSize?.name === size.name) ||
+                          (selectedVariant?.size === size.name &&
+                            selectedVariant?.color === selectedColor)
                             ? "border-[#f73a00] bg-orange-50 text-[#f73a00]"
                             : "border-gray-200 hover:border-orange-200 text-gray-800"
                         }`}
@@ -750,7 +810,7 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {/* Quantity (unchanged) */}
+            {/* Quantity */}
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-2">
                 Quantity
@@ -774,29 +834,27 @@ export default function ProductDetailClient({
                   </button>
                 </div>
                 <div className="text-sm text-gray-600">
-                  Total: Br
+                  Total: Br{" "}
                   {(quantity * getDisplayPrice()).toLocaleString("en-US")}
                 </div>
               </div>
             </div>
 
-            {/* Add to cart button (unchanged) */}
+            {/* Add to cart button */}
             <div className="sticky bottom-4 z-10 lg:static lg:bottom-auto">
               <Button
                 id="add-to-cart-btn"
                 onClick={handleAddToCart}
+                disabled={isAddDisabled}
                 className="w-full py-5 text-base sm:text-lg bg-gradient-to-r from-[#f73a00] to-[#f73a00] hover:from-[#f73a00] hover:to-orange-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all"
                 size="lg"
-                disabled={
-                  product.product_variants.length > 0 && !selectedVariant
-                }
               >
                 <ShoppingCart className="mr-2 h-5 w-5" />
                 Add to Cart
               </Button>
             </div>
 
-            {/* Shipping info (unchanged) */}
+            {/* Shipping info */}
             <div className="grid grid-cols-2 gap-2 pt-2">
               <div className="text-center p-2 bg-gray-50 rounded-lg">
                 <Truck className="h-5 w-5 mx-auto mb-1 text-[#f73a00]" />
@@ -810,7 +868,7 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* Tabs (unchanged) */}
+        {/* Tabs */}
         <div className="mt-8">
           <Tabs defaultValue="description" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 p-1 rounded-lg">
@@ -848,6 +906,7 @@ export default function ProductDetailClient({
               </div>
             </TabsContent>
             <TabsContent value="reviews" className="space-y-4">
+              {/* Reviews section - unchanged from original */}
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center gap-4">
                   <span className="text-3xl font-bold text-gray-900">
@@ -1044,7 +1103,9 @@ export default function ProductDetailClient({
                               <Clock className="h-3 w-3" />
                               {formatDistanceToNow(
                                 new Date(rating.created_at),
-                                { addSuffix: true },
+                                {
+                                  addSuffix: true,
+                                },
                               )}
                             </div>
                           </div>
@@ -1070,7 +1131,7 @@ export default function ProductDetailClient({
           </Tabs>
         </div>
 
-        {/* You May Also Like (unchanged) */}
+        {/* You May Also Like */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             You May Also Like
@@ -1101,7 +1162,7 @@ export default function ProductDetailClient({
                       </h3>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-sm font-bold text-[#f73a00]">
-                          Br{rec.price.toLocaleString("en-US")}
+                          Br {rec.price.toLocaleString("en-US")}
                         </span>
                         <div className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-[#f73a00] text-[#f73a00]" />
@@ -1122,7 +1183,7 @@ export default function ProductDetailClient({
           )}
         </div>
 
-        {/* Delete Confirmation Dialog (unchanged) */}
+        {/* Delete Confirmation Dialog */}
         <AlertDialog
           open={!!deletingRating}
           onOpenChange={() => setDeletingRating(null)}

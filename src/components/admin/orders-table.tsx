@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/context";
+import Link from "next/link";
 
 interface OrderItem {
   id: string;
@@ -33,11 +34,16 @@ interface OrderItem {
     title: string;
     images: string[];
     slug: string;
+    link: string;
   };
   product_variants: {
     color: string;
     size: string;
     unit: string;
+  } | null;
+  selected_options: {
+    color?: string;
+    size?: string;
   } | null;
 }
 
@@ -565,26 +571,43 @@ export default function OrdersTable({
                                     </div>
                                     <div className="min-w-0">
                                       <div className="font-medium text-gray-900 truncate">
-                                        {item.products.title}
+                                        <Link href={item.products.link}>
+                                          {item.products.title}
+                                        </Link>
                                       </div>
-                                      {item.product_variants && (
+                                      {(item.product_variants ||
+                                        item.selected_options) && (
                                         <div className="mt-1 text-xs md:text-sm text-gray-500 flex flex-wrap gap-x-3">
-                                          {item.product_variants.color && (
+                                          {item.product_variants?.color && (
                                             <span>
                                               Color:{" "}
                                               {item.product_variants.color}
                                             </span>
                                           )}
-                                          {item.product_variants.size && (
+                                          {item.product_variants?.size && (
                                             <span>
                                               Size: {item.product_variants.size}
                                             </span>
                                           )}
-                                          {item.product_variants.unit && (
+                                          {item.product_variants?.unit && (
                                             <span>
                                               Unit: {item.product_variants.unit}
                                             </span>
                                           )}
+                                          {!item.product_variants &&
+                                            item.selected_options?.color && (
+                                              <span>
+                                                Color:{" "}
+                                                {item.selected_options.color}
+                                              </span>
+                                            )}
+                                          {!item.product_variants &&
+                                            item.selected_options?.size && (
+                                              <span>
+                                                Size:{" "}
+                                                {item.selected_options.size}
+                                              </span>
+                                            )}
                                         </div>
                                       )}
                                       <div className="mt-1 text-xs md:text-sm text-gray-600">
