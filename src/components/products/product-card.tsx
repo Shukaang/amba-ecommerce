@@ -12,6 +12,7 @@ import { useFavorites } from "@/lib/favorites/context";
 import { useRouter } from "next/navigation";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
 import { hasVariantOptions } from "@/lib/utils/variant-checker";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 interface Product {
   id: string;
@@ -175,7 +176,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
             }`}
           >
             <Image
-              src={mainImage}
+              src={getSupabaseImage(mainImage, 500)}
               alt={product.title}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
@@ -191,7 +192,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
               }`}
             >
               <Image
-                src={secondaryImage}
+                src={getSupabaseImage(mainImage, 500)}
                 alt={product.title}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
