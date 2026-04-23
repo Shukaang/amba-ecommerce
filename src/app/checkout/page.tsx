@@ -358,6 +358,7 @@ Address: ${formData.address}`;
     );
   }
   const half = total / 2;
+  const currentYear = new Date().getFullYear();
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-4 sm:py-8 px-4">
@@ -687,7 +688,7 @@ Address: ${formData.address}`;
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-[60vh] bg-white">
               <div className="prose max-w-none">
                 <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-                  Effective Date: 22/2/2026
+                  Effective Date: Jan {currentYear}
                 </p>
 
                 <div className="space-y-4 sm:space-y-6">
