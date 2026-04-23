@@ -251,11 +251,7 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
               size="lg"
             >
               <ShoppingBag className="mr-2 h-5 w-5" />
-              {isAdding
-                ? "Adding..."
-                : requiresVariant
-                  ? "Select Options"
-                  : "Quick Add"}
+              {isAdding ? "Adding..." : "Quick Add"}
             </Button>
           </div>
         </div>
