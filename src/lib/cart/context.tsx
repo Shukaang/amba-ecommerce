@@ -43,6 +43,7 @@ interface CartContextType {
     variantId: string | null;
     quantity: number;
     price: number;
+    selectedOptions?: { color?: string; size?: string } | null;
   }) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -71,7 +72,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       const res = await fetch("/api/cart");
@@ -92,13 +92,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCart();
   }, [fetchCart]);
 
-  const findItemIndex = (productId: string, variantId: string | null) => {
-    return items.findIndex(
-      (item) => item.productId === productId && item.variantId === variantId,
-    );
+  // ✅ Match by variantId or selectedOptions to prevent duplicate merging
+  const findItemIndex = (
+    productId: string,
+    variantId: string | null,
+    selectedOptions?: { color?: string; size?: string } | null,
+  ) => {
+    return items.findIndex((item) => {
+      if (item.productId !== productId) return false;
+      if (variantId !== null) {
+        return item.variantId === variantId;
+      }
+      if (item.variantId !== null) return false;
+      if (selectedOptions?.color) {
+        return item.selectedOptions?.color === selectedOptions.color;
+      }
+      if (selectedOptions?.size) {
+        return item.selectedOptions?.size === selectedOptions.size;
+      }
+      return !item.selectedOptions?.color && !item.selectedOptions?.size;
+    });
   };
 
-  // Unified authentication guard – shows toast and redirects
   const requireAuth = (): boolean => {
     if (!user) {
       toast.error("Please login to manage your cart");
@@ -116,9 +131,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     price: number;
     selectedOptions?: { color?: string; size?: string } | null;
   }) => {
-    if (!requireAuth()) return; // will redirect and stop execution
+    if (!requireAuth()) return;
 
-    const existingIndex = findItemIndex(newItem.productId, newItem.variantId);
+    const existingIndex = findItemIndex(
+      newItem.productId,
+      newItem.variantId,
+      newItem.selectedOptions,
+    );
+
     let previousItems: CartItem[] = [];
 
     setItems((current) => {
@@ -211,11 +231,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Failed to update quantity");
       }
 
-      if (data.item) {
-        setItems((current) =>
-          current.map((item) => (item.id === itemId ? data.item : item)),
-        );
-      }
+      // ✅ Merge server response with existing item to preserve all fields
+      setItems((current) =>
+        current.map((item) => {
+          if (item.id !== itemId) return item;
+          const serverItem = data.item;
+          if (serverItem) {
+            return {
+              ...item,
+              quantity: serverItem.quantity ?? newQuantity,
+              price: serverItem.price ?? item.price,
+              variant:
+                serverItem.variant !== undefined
+                  ? serverItem.variant
+                  : item.variant,
+              selectedOptions:
+                serverItem.selectedOptions !== undefined
+                  ? serverItem.selectedOptions
+                  : item.selectedOptions,
+              product: serverItem.product ?? item.product,
+            };
+          }
+          return { ...item, quantity: newQuantity };
+        }),
+      );
     } catch (error: any) {
       setItems(previousItems);
       toast.error(error.message);

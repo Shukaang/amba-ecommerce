@@ -51,7 +51,7 @@ export async function PUT(
       })
     }
 
-    // Update quantity only
+    // Update quantity and fetch full relations, including selected_options
     const { data: updatedItem, error: updateError } = await supabase
       .from('cart_items')
       .update({
@@ -84,6 +84,7 @@ export async function PUT(
         size: updatedItem.product_variants.size,
         unit: updatedItem.product_variants.unit,
       } : null,
+      selectedOptions: updatedItem.selected_options, // ✅ now included
     }
 
     return NextResponse.json({

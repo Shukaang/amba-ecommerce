@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginSchema } from "@/lib/auth/schemas";
+import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -68,7 +70,13 @@ function LoginFormContent() {
       <CardHeader className="space-y-1 text-center mb-4">
         <div className="flex justify-center">
           <div className="w-20 h-20 rounded-full bg-[#f73a00]/10 flex items-center justify-center">
-            <img src="/logo.png" alt="AmbaStore" />
+            <Image
+              src={getSupabaseImage("logo.png", 160)}
+              alt="AmbaStore"
+              width={80}
+              height={80}
+              unoptimized
+            />
           </div>
         </div>
         <CardTitle className="text-3xl text-gray-900 font-bold">

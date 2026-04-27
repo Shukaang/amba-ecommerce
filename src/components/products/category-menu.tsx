@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Menu, X } from "lucide-react";
@@ -217,7 +217,7 @@ export default function CategoryMenu({
         </Button>
       </div>
 
-      {/* Desktop category menu - added z-10 to ensure it stacks above product grid */}
+      {/* Desktop category menu */}
       <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-24 z-10">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-gray-900">Categories</h3>
@@ -235,16 +235,16 @@ export default function CategoryMenu({
         </div>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer – fixed z-index above sticky header (header uses z-[100]) */}
       {mobileDrawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-[110] lg:hidden">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setMobileDrawerOpen(false)}
           />
-          {/* Drawer – width fits content, not full width */}
-          <div className="absolute left-0 top-0 h-full w-auto min-w-48 max-w-xs bg-white shadow-xl overflow-y-auto">
+          {/* Drawer panel – widened slightly for better readability */}
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[85vw] bg-white shadow-xl overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
                 Categories

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         size: item.product_variants.size,
         unit: item.product_variants.unit,
       } : null,
-      selectedOptions: item.selected_options, 
+      selectedOptions: item.selected_options,
     }))
 
     const total = formattedItems.reduce(
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json();
-    const { productId, variantId, quantity = 1, selectedOptions } = body;
+    const body = await request.json()
+    const { productId, variantId, quantity = 1, selectedOptions } = body
 
     if (!productId || quantity < 1) {
       return NextResponse.json(
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    // Verify user exists
+    // Verify user exists and is active
     const { data: dbUser, error: userError } = await supabase
       .from('users')
       .select('id, status')
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get product base price and slug
+    // Get product base price
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select('id, price, slug') // Include slug
+      .select('id, price, slug')
       .eq('id', productId)
       .single()
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine correct price (variant price if variant exists)
+    // Determine correct price
     let itemPrice = product.price
     if (variantId) {
       const { data: variant, error: variantError } = await supabase
@@ -139,43 +139,81 @@ export async function POST(request: NextRequest) {
       itemPrice = variant.price
     }
 
-    // Check if item already in cart
-    const { data: existingItem } = await supabase
+    // ✅ FIXED: Smart duplicate detection that handles all cases:
+    // 1. Products with variant rows → match by variant_id
+    // 2. Color-only without variant rows → match by selected_options->color
+    // 3. Size-only without variant rows → match by selected_options->size
+    // 4. Plain products → match by product_id alone
+    const baseQuery = supabase
       .from('cart_items')
       .select('*')
       .eq('user_id', user.id)
       .eq('product_id', productId)
-      .eq('variant_id', variantId)
-      .maybeSingle()
 
-    let cartItem;
-  if (existingItem) {
-    // Update quantity, keep selected_options
-    const { data: updatedItem, error: updateError } = await supabase
-      .from('cart_items')
-      .update({
-        quantity: existingItem.quantity + quantity,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existingItem.id)
-      .select(`*, products!inner(title, images, slug), product_variants!left(color, size, unit)`)
-      .single();
-    // ...
-    cartItem = updatedItem;
-  } else {
-    // Insert with selected_options
-    const { data: newItem, error: insertError } = await supabase
-      .from('cart_items')
-      .insert({
-        user_id: user.id,
-        product_id: productId,
-        variant_id: variantId,
-        quantity,
-        price: itemPrice,
-        selected_options: selectedOptions || null,   // NEW
-      })
-      .select(`*, products!inner(title, images, slug), product_variants!left(color, size, unit)`)
-      .single();
+    let existingItem = null
+
+    if (variantId) {
+      const { data } = await baseQuery
+        .eq('variant_id', variantId)
+        .maybeSingle()
+      existingItem = data
+    } else if (selectedOptions?.color) {
+      const { data } = await baseQuery
+        .is('variant_id', null)
+        .eq('selected_options->>color', selectedOptions.color)
+        .maybeSingle()
+      existingItem = data
+    } else if (selectedOptions?.size) {
+      const { data } = await baseQuery
+        .is('variant_id', null)
+        .eq('selected_options->>size', selectedOptions.size)
+        .maybeSingle()
+      existingItem = data
+    } else {
+      const { data } = await baseQuery
+        .is('variant_id', null)
+        .maybeSingle()
+      existingItem = data
+    }
+
+    let cartItem
+
+    if (existingItem) {
+      // Same product + same option already in cart → bump quantity
+      const { data: updatedItem, error: updateError } = await supabase
+        .from('cart_items')
+        .update({
+          quantity: existingItem.quantity + quantity,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingItem.id)
+        .select(`
+          *,
+          products!inner(title, images, slug),
+          product_variants!left(color, size, unit)
+        `)
+        .single()
+
+      if (updateError) throw updateError
+      cartItem = updatedItem
+    } else {
+      // Different option or new product → new line item
+      const { data: newItem, error: insertError } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: user.id,
+          product_id: productId,
+          variant_id: variantId || null,
+          quantity,
+          price: itemPrice,
+          selected_options: selectedOptions || null,
+        })
+        .select(`
+          *,
+          products!inner(title, images, slug),
+          product_variants!left(color, size, unit)
+        `)
+        .single()
 
       if (insertError) throw insertError
       cartItem = newItem
@@ -190,7 +228,7 @@ export async function POST(request: NextRequest) {
       product: {
         title: cartItem.products.title,
         images: cartItem.products.images,
-        slug: cartItem.products.slug, // Include slug
+        slug: cartItem.products.slug,
       },
       variant: cartItem.product_variants ? {
         color: cartItem.product_variants.color,
@@ -198,12 +236,13 @@ export async function POST(request: NextRequest) {
         unit: cartItem.product_variants.unit,
       } : null,
       selectedOptions: cartItem.selected_options,
-    };
+    }
 
     return NextResponse.json({
       item: formattedItem,
       message: 'Added to cart successfully',
     }, { status: 201 })
+
   } catch (error: any) {
     console.error('Add to cart error:', error)
     return NextResponse.json(

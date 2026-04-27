@@ -39,6 +39,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 // Force dynamic rendering to avoid prerender issues
 export const dynamic = "force-dynamic";
@@ -553,8 +554,20 @@ Address: ${formData.address}`;
                           <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                             {item.product.images?.[0] ? (
                               <img
-                                src={item.product.images[0]}
+                                src={getSupabaseImage(
+                                  item.product.images[0],
+                                  300,
+                                  70,
+                                )}
+                                srcSet={`
+                                  ${getSupabaseImage(item.product.images[0], 200, 60)} 200w,
+                                  ${getSupabaseImage(item.product.images[0], 300, 70)} 300w,
+                                  ${getSupabaseImage(item.product.images[0], 600, 75)} 600w
+                                  `}
+                                sizes="(max-width: 640px) 200px, (max-width: 1024px) 300px, 600px"
                                 alt={item.product.title}
+                                loading="lazy"
+                                decoding="async"
                                 className="h-full w-full object-cover"
                               />
                             ) : (

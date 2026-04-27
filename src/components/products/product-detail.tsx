@@ -122,32 +122,52 @@ export default function ProductDetailClient({
   const hasOnlySizes =
     product.sizes?.length > 0 &&
     (!product.colors || product.colors.length === 0);
+  const hasBoth = product.colors?.length > 0 && product.sizes?.length > 0;
 
-  // State
-  const [selectedColor, setSelectedColor] = useState<string | null>(
-    product.colors?.[0] || null,
-  );
+  // ✅ FIXED: For color-only products, sync initial selectedColor with
+  // the first variant's actual color value (not just colors[0])
+  const [selectedColor, setSelectedColor] = useState<string | null>(() => {
+    if (hasOnlyColors && product.product_variants.length > 0) {
+      return product.product_variants[0]?.color || product.colors?.[0] || null;
+    }
+    return product.colors?.[0] || null;
+  });
+
   const [selectedSize, setSelectedSize] = useState<{
     name: string;
     price: number;
-  } | null>(hasOnlySizes ? product.sizes?.[0] || null : null);
+  } | null>(() => {
+    if (hasOnlySizes || hasBoth) {
+      return product.sizes?.[0] || null;
+    }
+    return null;
+  });
+
+  // ✅ FIXED: Initial variant correctly resolved for all cases
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     () => {
-      if (product.product_variants.length > 0) {
+      if (product.product_variants.length === 0) return null;
+
+      if (hasOnlyColors) {
+        // Sync with the first variant directly
+        return product.product_variants[0] || null;
+      }
+
+      if (hasBoth) {
         const firstColor = product.colors?.[0];
         const firstSize = product.sizes?.[0]?.name;
-        if (firstColor && firstSize) {
-          return (
-            product.product_variants.find(
-              (v) => v.color === firstColor && v.size === firstSize,
-            ) || null
-          );
-        }
-        return product.product_variants[0];
+        return (
+          product.product_variants.find(
+            (v) => v.color === firstColor && v.size === firstSize,
+          ) || product.product_variants[0]
+        );
       }
+
+      // size-only: no variant row
       return null;
     },
   );
+
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -176,7 +196,6 @@ export default function ProductDetailClient({
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
 
-  // Track product view on mount
   useEffect(() => {
     trackProduct(product.id, "view");
     fetchRatings();
@@ -210,17 +229,13 @@ export default function ProductDetailClient({
 
   function useMediaQuery(query: string) {
     const [matches, setMatches] = useState(false);
-
     useEffect(() => {
       const media = window.matchMedia(query);
-      if (media.matches !== matches) {
-        setMatches(media.matches);
-      }
+      if (media.matches !== matches) setMatches(media.matches);
       const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
       media.addEventListener("change", listener);
       return () => media.removeEventListener("change", listener);
     }, [matches, query]);
-
     return matches;
   }
 
@@ -233,9 +248,7 @@ export default function ProductDetailClient({
         `/api/products/recommended?productId=${product.id}&limit=6`,
       );
       const data = await res.json();
-      if (res.ok) {
-        setRecommended(data.products || []);
-      }
+      if (res.ok) setRecommended(data.products || []);
     } catch (error) {
       console.error("Failed to fetch recommended:", error);
     } finally {
@@ -257,8 +270,8 @@ export default function ProductDetailClient({
         </svg>
       </div>
     `;
-
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
+
     const cartLinks = document.querySelectorAll('a[href="/cart"]');
     let cartIcon: Element | null = null;
     for (const link of cartLinks) {
@@ -301,13 +314,11 @@ export default function ProductDetailClient({
       return;
     }
 
-    // Determine if a valid selection has been made
     let canAdd = true;
     if (requiresVariant) {
       if (hasOnlyColors && !selectedColor) canAdd = false;
       else if (hasOnlySizes && !selectedSize) canAdd = false;
-      else if (!hasOnlyColors && !hasOnlySizes && !selectedVariant)
-        canAdd = false;
+      else if (hasBoth && !selectedVariant) canAdd = false;
     }
 
     if (!canAdd) {
@@ -315,14 +326,23 @@ export default function ProductDetailClient({
       return;
     }
 
-    // Build variant info for cart display
+    // ✅ FIXED: resolve the variant and variantData for every case
+    let resolvedVariant = selectedVariant;
     let variantData: { color?: string; size?: string; unit?: string } | null =
       null;
+
     if (hasOnlyColors && selectedColor) {
+      // Always look up by selected color — selectedVariant should already be in sync
+      // but we re-resolve here to be safe
+      resolvedVariant =
+        product.product_variants.find((v) => v.color === selectedColor) || null;
       variantData = { color: selectedColor };
     } else if (hasOnlySizes && selectedSize) {
+      // Size-only: no variant row, selectedVariant stays null
+      resolvedVariant = null;
       variantData = { size: selectedSize.name };
-    } else if (selectedVariant) {
+    } else if (hasBoth && selectedVariant) {
+      resolvedVariant = selectedVariant;
       variantData = {
         color: selectedVariant.color || undefined,
         size: selectedVariant.size || undefined,
@@ -331,7 +351,9 @@ export default function ProductDetailClient({
     }
 
     const price =
-      selectedVariant?.price ?? selectedSize?.price ?? product.price;
+      resolvedVariant?.price ??
+      (hasOnlySizes && selectedSize ? selectedSize.price : null) ??
+      product.price;
 
     try {
       const buttonRect = document
@@ -341,17 +363,12 @@ export default function ProductDetailClient({
 
       trackProduct(product.id, "add_to_cart");
 
-      // Pass variant details along with cart addition
       await addToCart({
         productId: product.id,
-        variantId: selectedVariant?.id || null,
+        variantId: resolvedVariant?.id || null,
         quantity,
         price,
-        // Extend the addToCart function to accept variantDetails if your cart context supports it
-        // Otherwise, the cart API should be modified to handle it. For now, we rely on variantId.
-        // If variantId is null, the cart may not show variant info. To fix, we need to adjust cart context.
-        // We'll assume the cart context/API can accept a variant object.
-        // @ts-ignore - passing extra data for single-dimension variants
+        // @ts-ignore
         selectedOptions: variantData,
       });
     } catch (error: any) {
@@ -359,13 +376,24 @@ export default function ProductDetailClient({
     }
   };
 
-  // Determine if add button should be disabled
   const isAddDisabled = (() => {
     if (!requiresVariant) return false;
     if (hasOnlyColors) return !selectedColor;
     if (hasOnlySizes) return !selectedSize;
-    return !selectedVariant;
+    if (hasBoth) return !selectedVariant;
+    return false;
   })();
+
+  // ✅ FIXED: getDisplayPrice accounts for all variant cases
+  const getDisplayPrice = () => {
+    if (selectedVariant) return selectedVariant.price;
+    if (hasOnlyColors && selectedColor) {
+      const v = product.product_variants.find((v) => v.color === selectedColor);
+      if (v) return v.price;
+    }
+    if (hasOnlySizes && selectedSize) return selectedSize.price;
+    return product.price;
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageRef.current) return;
@@ -472,12 +500,6 @@ export default function ProductDetailClient({
     }
   });
 
-  const getDisplayPrice = () => {
-    if (selectedVariant) return selectedVariant.price;
-    if (hasOnlySizes && selectedSize) return selectedSize.price;
-    return product.price;
-  };
-
   const getUserInitials = (name: string) =>
     name
       .split(" ")
@@ -533,10 +555,7 @@ export default function ProductDetailClient({
         price: product.price,
         priceCurrency: "ETB",
         availability: "https://schema.org/InStock",
-        seller: {
-          "@type": "Organization",
-          name: "AmbaStore",
-        },
+        seller: { "@type": "Organization", name: "AmbaStore" },
       },
       aggregateRating:
         averageRating > 0 && ratings.length > 0
@@ -552,7 +571,6 @@ export default function ProductDetailClient({
     script.type = "application/ld+json";
     script.textContent = JSON.stringify(productSchema);
     document.head.appendChild(script);
-
     return () => {
       document.head.removeChild(script);
     };
@@ -671,9 +689,8 @@ export default function ProductDetailClient({
                 <div className="flex gap-1">
                   <button
                     onClick={() => {
-                      if (!isWishlisted) {
+                      if (!isWishlisted)
                         trackProduct(product.id, "add_to_wishlist");
-                      }
                       setIsWishlisted(!isWishlisted);
                     }}
                     className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
@@ -735,17 +752,23 @@ export default function ProductDetailClient({
                       onClick={() => {
                         setSelectedColor(color);
                         if (hasOnlyColors) {
-                          // No sizes, we are done
-                          setSelectedSize(null);
-                          setSelectedVariant(null);
-                        } else {
-                          // Try to find a variant with this color and current size
-                          const currentSize =
-                            selectedSize?.name || product.sizes?.[0]?.name;
+                          // ✅ Always resolve variant by selected color
                           const variant = product.product_variants.find(
-                            (v) => v.color === color && v.size === currentSize,
+                            (v) => v.color === color,
                           );
                           setSelectedVariant(variant || null);
+                        } else {
+                          // hasBoth: resolve by color + current size
+                          const activeSize =
+                            selectedSize?.name || product.sizes?.[0]?.name;
+                          const variant = product.product_variants.find(
+                            (v) => v.color === color && v.size === activeSize,
+                          );
+                          setSelectedVariant(variant || null);
+                          // Ensure selectedSize is set
+                          if (!selectedSize && product.sizes?.[0]) {
+                            setSelectedSize(product.sizes[0]);
+                          }
                         }
                       }}
                       className={`px-4 py-2 border rounded-md transition-all ${
@@ -767,12 +790,6 @@ export default function ProductDetailClient({
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Size</h3>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => {
-                    const variant = !hasOnlySizes
-                      ? product.product_variants.find(
-                          (v) =>
-                            v.color === selectedColor && v.size === size.name,
-                        )
-                      : null;
                     const displayPrice =
                       size.price > 0 ? size.price : product.price;
                     return (
@@ -781,19 +798,30 @@ export default function ProductDetailClient({
                         onClick={() => {
                           setSelectedSize(size);
                           if (hasOnlySizes) {
+                            // Size-only: no variant row
                             setSelectedVariant(null);
-                          } else if (selectedColor) {
-                            const v = product.product_variants.find(
-                              (v) =>
-                                v.color === selectedColor &&
-                                v.size === size.name,
-                            );
-                            setSelectedVariant(v || null);
+                          } else {
+                            // ✅ hasBoth: resolve by current color + selected size
+                            const activeColor =
+                              selectedColor || product.colors?.[0] || null;
+                            if (activeColor) {
+                              const v = product.product_variants.find(
+                                (v) =>
+                                  v.color === activeColor &&
+                                  v.size === size.name,
+                              );
+                              setSelectedVariant(v || null);
+                            }
+                            // Ensure selectedColor is set
+                            if (!selectedColor && product.colors?.[0]) {
+                              setSelectedColor(product.colors[0]);
+                            }
                           }
                         }}
                         className={`px-3 py-1 border rounded-md transition-all ${
                           (hasOnlySizes && selectedSize?.name === size.name) ||
-                          (selectedVariant?.size === size.name &&
+                          (hasBoth &&
+                            selectedVariant?.size === size.name &&
                             selectedVariant?.color === selectedColor)
                             ? "border-[#f73a00] bg-orange-50 text-[#f73a00]"
                             : "border-gray-200 hover:border-orange-200 text-gray-800"
@@ -885,6 +913,7 @@ export default function ProductDetailClient({
                 <MessageCircle className="h-4 w-4 mr-2" /> Reviews
               </TabsTrigger>
             </TabsList>
+
             <TabsContent value="description" className="space-y-4">
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 {descriptionItems.length > 0 ? (
@@ -905,8 +934,8 @@ export default function ProductDetailClient({
                 )}
               </div>
             </TabsContent>
+
             <TabsContent value="reviews" className="space-y-4">
-              {/* Reviews section - unchanged from original */}
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center gap-4">
                   <span className="text-3xl font-bold text-gray-900">
@@ -936,6 +965,7 @@ export default function ProductDetailClient({
                   </Button>
                 </div>
               </div>
+
               {!user ? (
                 <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
                   <p className="text-gray-600 text-sm mb-2">
@@ -1001,6 +1031,7 @@ export default function ProductDetailClient({
                   </DialogContent>
                 </Dialog>
               ) : null}
+
               {userRating && (
                 <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
                   <div className="flex justify-between items-start mb-2">
@@ -1077,6 +1108,7 @@ export default function ProductDetailClient({
                   )}
                 </div>
               )}
+
               {loadingRatings ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-[#f73a00]" />

@@ -16,6 +16,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 const STORAGE_KEYS = {
   RESET_EMAIL: "resetEmail",
@@ -70,7 +72,13 @@ export default function ForgotPasswordForm() {
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
           <div className="w-20 h-20 rounded-full bg-[#f73a00]/10 flex items-center justify-center">
-            <img src="/logo.png" alt="AmbaStore" />
+            <Image
+              src={getSupabaseImage("logo.png", 160)}
+              alt="AmbaStore"
+              width={80}
+              height={80}
+              unoptimized
+            />
           </div>
         </div>
         <CardTitle className="text-3xl font-bold text-gray-900">

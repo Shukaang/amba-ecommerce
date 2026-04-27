@@ -175,14 +175,18 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 : "opacity-100"
             }`}
           >
-            <Image
-              src={getSupabaseImage(mainImage, 500)}
-              alt={product.title}
-              fill
+            <img
+              src={getSupabaseImage(mainImage, 400, 70)}
+              srcSet={`
+    ${getSupabaseImage(mainImage, 200, 60)} 200w,
+    ${getSupabaseImage(mainImage, 400, 70)} 400w,
+    ${getSupabaseImage(mainImage, 800, 75)} 800w
+  `}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-              className="object-cover"
-              priority={false}
-              unoptimized
+              alt={product.title}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           </div>
           {secondaryImage !== mainImage && (
@@ -191,25 +195,22 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 isHovered ? "opacity-100" : "opacity-0"
               }`}
             >
-              <Image
-                src={getSupabaseImage(mainImage, 500)}
-                alt={product.title}
-                fill
+              <img
+                src={getSupabaseImage(secondaryImage, 400, 70)}
+                srcSet={`
+    ${getSupabaseImage(secondaryImage, 200, 60)} 200w,
+    ${getSupabaseImage(secondaryImage, 400, 70)} 400w,
+    ${getSupabaseImage(secondaryImage, 800, 75)} 800w
+  `}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                className="object-cover"
-                priority={false}
-                unoptimized
+                alt={product.title}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-            {product.average_rating >= 4.5 && (
-              <Badge className="bg-[#f73a00] hover:bg-[#fe4208] text-white text-sm border-0 shadow-md">
-                <Star className="h-3 w-3 mr-1" /> Premium
-              </Badge>
-            )}
-          </div>
 
           {/* Favorite button */}
           <div

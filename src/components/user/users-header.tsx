@@ -52,7 +52,7 @@ interface UserHeaderProps {
 }
 
 export default function UserHeader({ initialUser }: UserHeaderProps) {
-  const { user, loading: authLoading, logout } = useAuth(); // Use only useAuth
+  const { user, loading: authLoading, logout } = useAuth();
   const { itemCount, loading: cartLoading } = useCart();
   const { categories, loading: categoriesLoading } = useCategories();
   const pathname = usePathname();
@@ -69,7 +69,6 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
   const mobileSearchRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Category dropdown state
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const [activeMainCategory, setActiveMainCategory] = useState<any>(null);
   const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,7 +84,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch search suggestions when debounced search changes
+  // Fetch search suggestions
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (!debouncedSearch.trim()) {
@@ -167,7 +166,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     }
   };
 
-  // Dropdown handlers (unchanged)
+  // Category dropdown handlers
   const handleCatDropdownMouseEnter = () => {
     if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
     setCatDropdownOpen(true);
@@ -187,6 +186,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     setActiveMainCategory(null);
   };
 
+  // Hide header on auth pages or admin
   if (
     [
       "/login",
@@ -200,7 +200,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
     return null;
   if (pathname.startsWith("/admin")) return null;
 
-  // Show loading skeleton while auth is loading
+  // Loading skeleton
   if (authLoading) {
     return (
       <header className="sticky top-0 z-[100] w-full bg-white border-b border-gray-200">
@@ -236,9 +236,8 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Desktop layout (unchanged) */}
+          {/* ===== Desktop layout (unchanged) ===== */}
           <div className="hidden lg:flex justify-between items-center h-20">
-            {/* Logo + Brand */}
             <Link
               href="/"
               className={`flex items-center gap-1 shrink-0 ${tagesschrift.className}`}
@@ -249,13 +248,12 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               </span>
             </Link>
 
-            {/* Desktop Search Bar */}
+            {/* Search Bar */}
             <div
               className="flex-1 max-w-2xl mx-4 relative"
               ref={desktopSearchRef}
             >
               <div className="flex w-full items-center bg-white border border-gray-200 rounded-full shadow-sm">
-                {/* All Categories Trigger */}
                 <div
                   className="relative"
                   onMouseEnter={handleCatDropdownMouseEnter}
@@ -346,7 +344,6 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
                   )}
                 </div>
 
-                {/* Search Input */}
                 <form onSubmit={handleSearch} className="flex-1 flex">
                   <Input
                     type="text"
@@ -413,7 +410,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               )}
             </div>
 
-            {/* Desktop Right side icons */}
+            {/* Desktop Right side icons (unchanged) */}
             <div className="flex items-center gap-4 shrink-0">
               <Link href="/cart" className="relative p-2 group">
                 <ShoppingBag className="h-6 w-6 text-[#f73a00] group-hover:text-[#f73a00]/90 transition-colors" />
@@ -556,7 +553,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
             </div>
           </div>
 
-          {/* Mobile layout - restructured */}
+          {/* ===== Mobile layout ===== */}
           <div className="lg:hidden">
             {/* Top row: Logo + Cart + Hamburger */}
             <div className="flex justify-between items-center h-20">
@@ -595,7 +592,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               </div>
             </div>
 
-            {/* Separate search section with distinct background and border */}
+            {/* Mobile search bar */}
             <div className="w-full border-t border-gray-200">
               <div className="py-3" ref={mobileSearchRef}>
                 <form onSubmit={handleSearch} className="w-full">
@@ -663,7 +660,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
           </div>
         </div>
 
-        {/* Mobile Menu Drawer (unchanged) */}
+        {/* ===== Mobile Menu Drawer (FIXED) ===== */}
         <div
           className={cn(
             "fixed inset-0 z-[9999] lg:hidden",
@@ -679,7 +676,7 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Drawer panel */}
+          {/* Drawer panel – add bottom padding to content */}
           <div
             className={cn(
               "absolute top-0 right-0 h-screen w-4/5 max-w-sm bg-white shadow-2xl transform transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-y-auto",
@@ -696,7 +693,8 @@ export default function UserHeader({ initialUser }: UserHeaderProps) {
               </button>
             </div>
 
-            <div className="p-6 pt-2">
+            {/* ✅ Added pb-8 (padding-bottom) to the content container so the last items are fully visible even when scrolled */}
+            <div className="p-6 pt-2 pb-12">
               {/* Categories Section */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-[#00014a] mb-3">
