@@ -141,12 +141,8 @@ export default function FeaturedProducts() {
               </div>
             ))
           ) : products.length > 0 ? (
-            products.map((product, index) => (
-              <PremiumProductCard
-                key={product.id}
-                product={product}
-                priority={index < 15}
-              />
+            products.map((product) => (
+              <PremiumProductCard key={product.id} product={product} />
             ))
           ) : (
             <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-5 text-center py-12">
