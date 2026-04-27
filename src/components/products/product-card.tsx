@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Star, ShoppingBag, Heart, Loader2 } from "lucide-react";
@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
 import { hasVariantOptions } from "@/lib/utils/variant-checker";
 import { getSupabaseImage } from "@/lib/utils/supabase-image";
+import { blurPlaceholder } from "@/lib/utils/placeholder";
 
 interface Product {
   id: string;
@@ -36,19 +37,25 @@ interface Product {
 
 interface PremiumProductCardProps {
   product: Product;
+  priority?: boolean; // will be set to true for the first few cards
 }
 
-function PremiumProductCard({ product }: PremiumProductCardProps) {
+function PremiumProductCard({
+  product,
+  priority = false,
+}: PremiumProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  // Lazy load the secondary image only after first hover to save requests
+  const [hoverImageReady, setHoverImageReady] = useState(false);
   const { addToCart } = useCart();
   const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
   const router = useRouter();
   const trackProduct = useTrackProduct();
 
-  const mainImage = product.images?.[0];
+  const mainImage = product.images?.[0] || "";
   const secondaryImage = product.images?.[1] || mainImage;
 
   const variantPrices = product.product_variants?.map((v) => v.price) ?? [];
@@ -60,7 +67,15 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
   const productIsFavorite = isFavorite(product.id);
   const requiresVariant = hasVariantOptions(product);
 
+  // Once the card is hovered, we “wake up” the secondary image
+  useEffect(() => {
+    if (isHovered && !hoverImageReady) {
+      setHoverImageReady(true);
+    }
+  }, [isHovered, hoverImageReady]);
+
   const createCartAnimation = (startRect: DOMRect) => {
+    // … animation code unchanged …
     const animationEl = document.createElement("div");
     animationEl.className = "fixed z-[100] pointer-events-none";
     animationEl.innerHTML = `
@@ -71,7 +86,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
       </div>
     `;
     document.getElementById("cart-animation-element")?.appendChild(animationEl);
-
     const cartLinks = document.querySelectorAll('a[href="/cart"]');
     let cartIcon: Element | null = null;
     for (const link of cartLinks) {
@@ -116,7 +130,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    // Redirect to detail page if product has variant options
     if (requiresVariant) {
       router.push(`/products/${product.slug}`);
       return;
@@ -167,49 +180,65 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="relative aspect-[4/4] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-          {/* Images */}
-          <div
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              isHovered && secondaryImage !== mainImage
-                ? "opacity-0"
-                : "opacity-100"
-            }`}
-          >
-            <img
+          {/* Main image – always loaded, possibly as LCP candidate */}
+          <div className="absolute inset-0 transition-opacity duration-700 opacity-100 group-hover:opacity-0">
+            <Image
               src={getSupabaseImage(mainImage, 400, 70)}
-              srcSet={`
-    ${getSupabaseImage(mainImage, 200, 60)} 200w,
-    ${getSupabaseImage(mainImage, 400, 70)} 400w,
-    ${getSupabaseImage(mainImage, 800, 75)} 800w
-  `}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               alt={product.title}
-              loading="lazy"
-              decoding="async"
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              className="object-cover"
+              unoptimized
+              priority={priority} // only for above‑the‑fold cards
+              fetchPriority={priority ? "high" : "auto"}
+              blurDataURL={
+                mainImage
+                  ? getSupabaseImage(mainImage) + blurPlaceholder()
+                  : undefined
+              }
+              placeholder="blur"
             />
           </div>
-          {secondaryImage !== mainImage && (
-            <div
-              className={`absolute inset-0 transition-opacity duration-700 ${
-                isHovered ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <img
+
+          {/* Secondary image – only rendered after first hover; avoids invisible image request */}
+          {hoverImageReady && secondaryImage !== mainImage && (
+            <div className="absolute inset-0 transition-opacity duration-700 opacity-0 group-hover:opacity-100">
+              <Image
                 src={getSupabaseImage(secondaryImage, 400, 70)}
-                srcSet={`
-    ${getSupabaseImage(secondaryImage, 200, 60)} 200w,
-    ${getSupabaseImage(secondaryImage, 400, 70)} 400w,
-    ${getSupabaseImage(secondaryImage, 800, 75)} 800w
-  `}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 alt={product.title}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                className="object-cover"
+                unoptimized
+                // secondary image is never priority
                 loading="lazy"
-                decoding="async"
-                className="absolute inset-0 w-full h-full object-cover"
+                fetchPriority="low"
+                blurDataURL={
+                  secondaryImage
+                    ? getSupabaseImage(secondaryImage) + blurPlaceholder()
+                    : undefined
+                }
+                placeholder="blur"
               />
             </div>
           )}
+
+          {/* Fallback if no secondary image */}
+          {!hoverImageReady && secondaryImage === mainImage && (
+            <div className="absolute inset-0 transition-opacity duration-700 opacity-0 group-hover:opacity-100">
+              <Image
+                src={getSupabaseImage(mainImage, 400, 70)}
+                alt={product.title}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                className="object-cover"
+                unoptimized
+                loading="lazy"
+                fetchPriority="low"
+              />
+            </div>
+          )}
+
           <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           {/* Favorite button */}
