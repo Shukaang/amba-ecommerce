@@ -25,6 +25,7 @@ import {
 import { Plus, Trash2, Package, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 interface Category {
   id: string;
@@ -488,7 +489,7 @@ export default function NewProductPage() {
                   {mainPreview ? (
                     <div className="relative w-24 h-24 border rounded-md overflow-hidden">
                       <Image
-                        src={mainPreview}
+                        src={getSupabaseImage(mainPreview, 500)}
                         alt="Main preview"
                         fill
                         className="object-cover"
@@ -525,7 +526,7 @@ export default function NewProductPage() {
                   {secondaryPreview ? (
                     <div className="relative w-24 h-24 border rounded-md overflow-hidden">
                       <Image
-                        src={secondaryPreview}
+                        src={getSupabaseImage(secondaryPreview, 50)}
                         alt="Secondary preview"
                         fill
                         className="object-cover"
@@ -565,7 +566,7 @@ export default function NewProductPage() {
                       className="relative w-24 h-24 border rounded-md overflow-hidden"
                     >
                       <Image
-                        src={preview}
+                        src={getSupabaseImage(preview, 500)}
                         alt={`Additional ${idx}`}
                         fill
                         className="object-cover"

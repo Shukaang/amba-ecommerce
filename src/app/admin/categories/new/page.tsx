@@ -23,6 +23,7 @@ import {
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 interface Category {
   id: string;
@@ -239,7 +240,7 @@ export default function NewCategoryPage() {
                   {imagePreview ? (
                     <div className="relative w-24 h-24 border border-gray-300 rounded-md overflow-hidden bg-gray-50">
                       <Image
-                        src={imagePreview}
+                        src={getSupabaseImage(imagePreview, 500)}
                         alt="Category preview"
                         fill
                         className="object-cover"

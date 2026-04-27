@@ -56,6 +56,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 interface Rating {
   id: string;
@@ -609,11 +611,19 @@ export function AdminRatingsClient({
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                   {selectedRating.product.images?.[0] ? (
-                    <img
-                      src={selectedRating.product.images[0]}
-                      alt={selectedRating.product.title}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={getSupabaseImage(
+                          selectedRating.product.images[0],
+                          300,
+                        )}
+                        alt={selectedRating.product.title}
+                        fill
+                        sizes="128px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="h-8 w-8 text-gray-400" />

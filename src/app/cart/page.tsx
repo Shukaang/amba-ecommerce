@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import Link from "next/link";
+import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 export default function CartPage() {
   const router = useRouter();
@@ -158,11 +160,19 @@ export default function CartPage() {
                           {item.product.images &&
                           item.product.images.length > 0 ? (
                             <Link href={`/products/${productSlug}`}>
-                              <img
-                                src={item.product.images[0]}
-                                alt={item.product.title}
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                              />
+                              <div className="relative w-full h-full">
+                                <Image
+                                  src={getSupabaseImage(
+                                    item.product.images[0],
+                                    300,
+                                  )}
+                                  alt={item.product.title}
+                                  fill
+                                  sizes="(max-width: 640px) 112px, 128px"
+                                  className="object-cover hover:scale-105 transition-transform duration-300"
+                                  unoptimized
+                                />
+                              </div>
                             </Link>
                           ) : (
                             <Link href={`/products/${productSlug}`}>

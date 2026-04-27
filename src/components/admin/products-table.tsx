@@ -41,6 +41,8 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/supabaseClient";
+import Image from "next/image";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 interface Product {
   id: string;
@@ -499,12 +501,15 @@ export default function ProductsTable({
                   >
                     <td className="px-4 py-2">
                       <div className="flex items-center">
-                        <div className="shrink-0 h-10 w-10 bg-gray-200 rounded-md overflow-hidden">
+                        <div className="shrink-0 h-10 w-10 relative bg-gray-200 rounded-md overflow-hidden">
                           {product.images && product.images.length > 0 ? (
-                            <img
-                              src={product.images[0]}
+                            <Image
+                              src={getSupabaseImage(product.images[0], 100)}
                               alt={product.title}
-                              className="h-full w-full object-cover"
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                              unoptimized
                             />
                           ) : (
                             <div className="h-full w-full bg-gray-100 flex items-center justify-center">

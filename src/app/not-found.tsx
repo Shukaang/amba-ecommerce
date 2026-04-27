@@ -60,7 +60,7 @@ export default function NotFound() {
               Browse Products
             </Link>
             <Link
-              href="/"
+              href="mailto:support@ambaastore.com"
               className="text-sm text-[#f73a00] hover:text-[#f73a00]/90 hover:underline"
             >
               Contact Support
