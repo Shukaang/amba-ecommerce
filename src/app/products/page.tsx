@@ -186,12 +186,8 @@ export default async function ProductsPage({
           <Suspense fallback={<ProductsLoading />}>
             {rankedProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
-                {rankedProducts.map((product, index) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    priority={index < 24}
-                  />
+                {rankedProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             ) : (
