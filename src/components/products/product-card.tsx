@@ -197,13 +197,6 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#f73a00]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-            {product.average_rating >= 4.5 && (
-              <Badge className="bg-[#f73a00] hover:bg-[#fe4208] text-white text-sm border-0 shadow-md">
-                <Star className="h-3 w-3 mr-1" /> Premium
-              </Badge>
-            )}
-          </div>
 
           {/* Favorite button */}
           <div
