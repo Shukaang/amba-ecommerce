@@ -2,10 +2,8 @@
 
 import { memo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Star, ShoppingBag, Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/lib/cart/context";
 import { useAuth } from "@/lib/auth/context";
 import { useFavorites } from "@/lib/favorites/context";

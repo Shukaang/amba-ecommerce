@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
+import { useFavorites } from "@/lib/favorites/context";
 import {
   Star,
   ShoppingCart,
@@ -47,7 +48,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
 import { hasVariantOptions } from "@/lib/utils/variant-checker";
 
-// Types
+// Types (unchanged)
 interface ProductVariant {
   id: string;
   color: string | null;
@@ -112,9 +113,12 @@ export default function ProductDetailClient({
   const router = useRouter();
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
   const pathname = usePathname();
   const trackProduct = useTrackProduct();
 
+  const productIsFavorite = isFavorite(product.id);
   const requiresVariant = hasVariantOptions(product);
   const hasOnlyColors =
     product.colors?.length > 0 &&
@@ -124,8 +128,7 @@ export default function ProductDetailClient({
     (!product.colors || product.colors.length === 0);
   const hasBoth = product.colors?.length > 0 && product.sizes?.length > 0;
 
-  // ✅ FIXED: For color-only products, sync initial selectedColor with
-  // the first variant's actual color value (not just colors[0])
+  // Variant selection state (identical to before)
   const [selectedColor, setSelectedColor] = useState<string | null>(() => {
     if (hasOnlyColors && product.product_variants.length > 0) {
       return product.product_variants[0]?.color || product.colors?.[0] || null;
@@ -143,16 +146,12 @@ export default function ProductDetailClient({
     return null;
   });
 
-  // ✅ FIXED: Initial variant correctly resolved for all cases
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     () => {
       if (product.product_variants.length === 0) return null;
-
       if (hasOnlyColors) {
-        // Sync with the first variant directly
         return product.product_variants[0] || null;
       }
-
       if (hasBoth) {
         const firstColor = product.colors?.[0];
         const firstSize = product.sizes?.[0]?.name;
@@ -162,15 +161,12 @@ export default function ProductDetailClient({
           ) || product.product_variants[0]
         );
       }
-
-      // size-only: no variant row
       return null;
     },
   );
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
@@ -326,19 +322,15 @@ export default function ProductDetailClient({
       return;
     }
 
-    // ✅ FIXED: resolve the variant and variantData for every case
     let resolvedVariant = selectedVariant;
     let variantData: { color?: string; size?: string; unit?: string } | null =
       null;
 
     if (hasOnlyColors && selectedColor) {
-      // Always look up by selected color — selectedVariant should already be in sync
-      // but we re-resolve here to be safe
       resolvedVariant =
         product.product_variants.find((v) => v.color === selectedColor) || null;
       variantData = { color: selectedColor };
     } else if (hasOnlySizes && selectedSize) {
-      // Size-only: no variant row, selectedVariant stays null
       resolvedVariant = null;
       variantData = { size: selectedSize.name };
     } else if (hasBoth && selectedVariant) {
@@ -384,7 +376,6 @@ export default function ProductDetailClient({
     return false;
   })();
 
-  // ✅ FIXED: getDisplayPrice accounts for all variant cases
   const getDisplayPrice = () => {
     if (selectedVariant) return selectedVariant.price;
     if (hasOnlyColors && selectedColor) {
@@ -402,6 +393,21 @@ export default function ProductDetailClient({
     const x = ((e.clientX - left) / width) * 100;
     const y = ((e.clientY - top) / height) * 100;
     setZoomPosition({ x, y });
+  };
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      await toggleFavorite(product.id, product as any);
+      if (!productIsFavorite) {
+        trackProduct(product.id, "add_to_wishlist");
+      }
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   const handleSubmitRating = async () => {
@@ -687,22 +693,31 @@ export default function ProductDetailClient({
                   </span>
                 </div>
                 <div className="flex gap-1">
+                  {/* ✅ FAVORITE BUTTON – same as product card */}
                   <button
-                    onClick={() => {
-                      if (!isWishlisted)
-                        trackProduct(product.id, "add_to_wishlist");
-                      setIsWishlisted(!isWishlisted);
-                    }}
-                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
+                    onClick={handleFavoriteClick}
+                    disabled={favoriteLoading}
+                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
+                    aria-label={
+                      productIsFavorite
+                        ? "Remove from favorites"
+                        : "Add to favorites"
+                    }
                   >
-                    <Heart
-                      className={`h-5 w-5 ${
-                        isWishlisted
-                          ? "fill-[#f73a00] text-[#f73a00]"
-                          : "text-gray-600"
-                      }`}
-                    />
+                    {favoriteLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-[#f73a00]" />
+                    ) : (
+                      <Heart
+                        className={`h-5 w-5 ${
+                          productIsFavorite
+                            ? "fill-[#f73a00] text-[#f73a00]"
+                            : "text-gray-600"
+                        }`}
+                      />
+                    )}
                   </button>
+
+                  {/* Share button (unchanged) */}
                   <button
                     onClick={() => {
                       navigator
@@ -724,6 +739,7 @@ export default function ProductDetailClient({
               </div>
             </div>
 
+            {/* Price, variants, quantity, add to cart – unchanged */}
             <div className="border-y border-gray-200 py-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -752,20 +768,17 @@ export default function ProductDetailClient({
                       onClick={() => {
                         setSelectedColor(color);
                         if (hasOnlyColors) {
-                          // ✅ Always resolve variant by selected color
                           const variant = product.product_variants.find(
                             (v) => v.color === color,
                           );
                           setSelectedVariant(variant || null);
                         } else {
-                          // hasBoth: resolve by color + current size
                           const activeSize =
                             selectedSize?.name || product.sizes?.[0]?.name;
                           const variant = product.product_variants.find(
                             (v) => v.color === color && v.size === activeSize,
                           );
                           setSelectedVariant(variant || null);
-                          // Ensure selectedSize is set
                           if (!selectedSize && product.sizes?.[0]) {
                             setSelectedSize(product.sizes[0]);
                           }
@@ -798,10 +811,8 @@ export default function ProductDetailClient({
                         onClick={() => {
                           setSelectedSize(size);
                           if (hasOnlySizes) {
-                            // Size-only: no variant row
                             setSelectedVariant(null);
                           } else {
-                            // ✅ hasBoth: resolve by current color + selected size
                             const activeColor =
                               selectedColor || product.colors?.[0] || null;
                             if (activeColor) {
@@ -812,7 +823,6 @@ export default function ProductDetailClient({
                               );
                               setSelectedVariant(v || null);
                             }
-                            // Ensure selectedColor is set
                             if (!selectedColor && product.colors?.[0]) {
                               setSelectedColor(product.colors[0]);
                             }
@@ -896,7 +906,7 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs (description & reviews) – exactly as before */}
         <div className="mt-8">
           <Tabs defaultValue="description" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 p-1 rounded-lg">
@@ -1135,9 +1145,7 @@ export default function ProductDetailClient({
                               <Clock className="h-3 w-3" />
                               {formatDistanceToNow(
                                 new Date(rating.created_at),
-                                {
-                                  addSuffix: true,
-                                },
+                                { addSuffix: true },
                               )}
                             </div>
                           </div>
@@ -1163,7 +1171,7 @@ export default function ProductDetailClient({
           </Tabs>
         </div>
 
-        {/* You May Also Like */}
+        {/* You May Also Like (unchanged) */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             You May Also Like
