@@ -488,10 +488,9 @@ export default function NewProductPage() {
                 <div className="flex items-center gap-4">
                   {mainPreview ? (
                     <div className="relative w-24 h-24 border rounded-md overflow-hidden">
-                      <Image
-                        src={getSupabaseImage(mainPreview, 500)}
+                      <img
+                        src={mainPreview}
                         alt="Main preview"
-                        fill
                         className="object-cover"
                       />
                       <button
@@ -525,10 +524,9 @@ export default function NewProductPage() {
                 <div className="flex items-center gap-4">
                   {secondaryPreview ? (
                     <div className="relative w-24 h-24 border rounded-md overflow-hidden">
-                      <Image
-                        src={getSupabaseImage(secondaryPreview, 50)}
+                      <img
+                        src={secondaryPreview}
                         alt="Secondary preview"
-                        fill
                         className="object-cover"
                       />
                       <button
@@ -565,10 +563,9 @@ export default function NewProductPage() {
                       key={idx}
                       className="relative w-24 h-24 border rounded-md overflow-hidden"
                     >
-                      <Image
-                        src={getSupabaseImage(preview, 500)}
+                      <img
+                        src={preview}
                         alt={`Additional ${idx}`}
-                        fill
                         className="object-cover"
                       />
                       <button
