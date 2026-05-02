@@ -72,12 +72,11 @@ export default function ForgotPasswordForm() {
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
           <div className="w-20 h-20 rounded-full bg-[#f73a00]/10 flex items-center justify-center">
-            <Image
+            <img
               src={getSupabaseImage("logo.png", 160)}
               alt="AmbaStore"
               width={80}
               height={80}
-              unoptimized
             />
           </div>
         </div>

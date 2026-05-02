@@ -161,16 +161,14 @@ export default function CartPage() {
                           item.product.images.length > 0 ? (
                             <Link href={`/products/${productSlug}`}>
                               <div className="relative w-full h-full">
-                                <Image
+                                <img
                                   src={getSupabaseImage(
                                     item.product.images[0],
                                     300,
                                   )}
                                   alt={item.product.title}
-                                  fill
                                   sizes="(max-width: 640px) 112px, 128px"
                                   className="object-cover hover:scale-105 transition-transform duration-300"
-                                  unoptimized
                                 />
                               </div>
                             </Link>

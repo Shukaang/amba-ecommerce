@@ -612,16 +612,14 @@ export function AdminRatingsClient({
                 <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                   {selectedRating.product.images?.[0] ? (
                     <div className="relative w-full h-full">
-                      <Image
+                      <img
                         src={getSupabaseImage(
                           selectedRating.product.images[0],
                           300,
                         )}
                         alt={selectedRating.product.title}
-                        fill
                         sizes="128px"
                         className="object-cover"
-                        unoptimized
                       />
                     </div>
                   ) : (

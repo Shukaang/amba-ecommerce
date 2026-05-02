@@ -239,10 +239,9 @@ export default function NewCategoryPage() {
                 <div className="flex items-center gap-4">
                   {imagePreview ? (
                     <div className="relative w-24 h-24 border border-gray-300 rounded-md overflow-hidden bg-gray-50">
-                      <Image
+                      <img
                         src={getSupabaseImage(imagePreview, 500)}
                         alt="Category preview"
-                        fill
                         className="object-cover"
                       />
                       <button

@@ -503,13 +503,11 @@ export default function ProductsTable({
                       <div className="flex items-center">
                         <div className="shrink-0 h-10 w-10 relative bg-gray-200 rounded-md overflow-hidden">
                           {product.images && product.images.length > 0 ? (
-                            <Image
+                            <img
                               src={getSupabaseImage(product.images[0], 100)}
                               alt={product.title}
-                              fill
                               sizes="40px"
                               className="object-cover"
-                              unoptimized
                             />
                           ) : (
                             <div className="h-full w-full bg-gray-100 flex items-center justify-center">

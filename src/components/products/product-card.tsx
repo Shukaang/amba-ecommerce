@@ -175,14 +175,11 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 : "opacity-100"
             }`}
           >
-            <Image
+            <img
               src={getSupabaseImage(mainImage, 500)}
               alt={product.title}
-              fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               className="object-cover"
-              priority={false}
-              unoptimized
             />
           </div>
           {secondaryImage !== mainImage && (
@@ -191,14 +188,11 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 isHovered ? "opacity-100" : "opacity-0"
               }`}
             >
-              <Image
+              <img
                 src={getSupabaseImage(secondaryImage, 500)}
                 alt={product.title}
-                fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 className="object-cover"
-                priority={false}
-                unoptimized
               />
             </div>
           )}
