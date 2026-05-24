@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useCart } from "@/lib/cart/context";
@@ -636,10 +637,12 @@ export default function ProductDetailClient({
                       : "border-transparent hover:border-gray-300"
                   }`}
                 >
-                  <img
+                  <Image
                     src={img}
                     alt={`Thumbnail ${idx + 1}`}
                     className="w-full h-full object-cover"
+                    unoptimized
+                    loading="lazy"
                   />
                 </button>
               ))}
@@ -659,7 +662,7 @@ export default function ProductDetailClient({
                 onMouseLeave={() => setIsImageZoomed(false)}
                 onMouseMove={handleMouseMove}
               >
-                <img
+                <Image
                   src={product.images[selectedImage] || "/placeholder.jpg"}
                   alt={product.title}
                   className={`w-full h-full object-contain transition-transform duration-200 ${
@@ -672,6 +675,8 @@ export default function ProductDetailClient({
                         }
                       : {}
                   }
+                  unoptimized
+                  loading="lazy"
                 />
               </div>
             </div>
@@ -1190,10 +1195,12 @@ export default function ProductDetailClient({
                 >
                   <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all h-full">
                     <div className="aspect-square bg-gray-100">
-                      <img
+                      <Image
                         src={rec.images[0] || "/placeholder.jpg"}
                         alt={rec.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        unoptimized
+                        loading="lazy"
                       />
                     </div>
                     <div className="p-2">

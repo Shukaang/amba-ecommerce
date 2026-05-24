@@ -2,6 +2,7 @@
 
 import { memo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Star, ShoppingBag, Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart/context";
@@ -173,11 +174,13 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 : "opacity-100"
             }`}
           >
-            <img
+            <Image
               src={getSupabaseImage(mainImage, 500)}
               alt={product.title}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               className="object-cover"
+              unoptimized
+              loading="lazy"
             />
           </div>
           {secondaryImage !== mainImage && (
@@ -186,11 +189,13 @@ function PremiumProductCard({ product }: PremiumProductCardProps) {
                 isHovered ? "opacity-100" : "opacity-0"
               }`}
             >
-              <img
+              <Image
                 src={getSupabaseImage(secondaryImage, 500)}
                 alt={product.title}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 className="object-cover"
+                unoptimized
+                loading="lazy"
               />
             </div>
           )}

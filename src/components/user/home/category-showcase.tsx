@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Tag } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 interface Category {
   id: string;
@@ -165,10 +166,12 @@ export default function CategoryShowcase() {
               className="group relative block"
             >
               <div className="relative h-[200px] md:h-[400px] rounded-lg overflow-hidden">
-                <img
+                <Image
                   src={getCategoryImage(cat4)}
                   alt={cat4.title}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  unoptimized
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white z-10">
@@ -197,10 +200,12 @@ export default function CategoryShowcase() {
                   className="group relative block"
                 >
                   <div className="relative h-[170px] md:h-[190px] rounded-lg overflow-hidden">
-                    <img
+                    <Image
                       src={getCategoryImage(cat3)}
                       alt={cat3.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      unoptimized
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -223,10 +228,12 @@ export default function CategoryShowcase() {
                   className="group relative block"
                 >
                   <div className="relative h-[170px] md:h-[190px] rounded-lg overflow-hidden">
-                    <img
+                    <Image
                       src={getCategoryImage(cat1)}
                       alt={cat1.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      unoptimized
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -251,10 +258,12 @@ export default function CategoryShowcase() {
                 className="group relative block"
               >
                 <div className="relative h-[180px] md:h-[200px] rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={getCategoryImage(cat2)}
                     alt={cat2.title}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    unoptimized
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4 text-white">
