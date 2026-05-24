@@ -50,6 +50,7 @@ export default function Footer({ categories }: FooterProps) {
       "/verify-otp",
       "/reset-password",
       "/change-password",
+      "/products",
     ].includes(pathname) ||
     pathname.startsWith("/admin")
   ) {
