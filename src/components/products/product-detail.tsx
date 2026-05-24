@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useTrackProduct } from "@/hooks/useTrackProduct";
 import { hasVariantOptions } from "@/lib/utils/variant-checker";
+import { getSupabaseImage } from "@/lib/utils/supabase-image";
 
 // Types (unchanged)
 interface ProductVariant {
@@ -638,7 +639,7 @@ export default function ProductDetailClient({
                   }`}
                 >
                   <Image
-                    src={img}
+                    src={getSupabaseImage(img, 300)}
                     alt={`Thumbnail ${idx + 1}`}
                     className="w-full h-full object-cover"
                     unoptimized
@@ -663,7 +664,7 @@ export default function ProductDetailClient({
                 onMouseMove={handleMouseMove}
               >
                 <Image
-                  src={product.images[selectedImage] || "/placeholder.jpg"}
+                  src={getSupabaseImage(product.images[selectedImage], 600)}
                   alt={product.title}
                   className={`w-full h-full object-contain transition-transform duration-200 ${
                     isImageZoomed ? "scale-150" : "scale-100"
@@ -1196,7 +1197,7 @@ export default function ProductDetailClient({
                   <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all h-full">
                     <div className="aspect-square bg-gray-100">
                       <Image
-                        src={rec.images[0] || "/placeholder.jpg"}
+                        src={getSupabaseImage(rec.images[0], 500)}
                         alt={rec.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         unoptimized
